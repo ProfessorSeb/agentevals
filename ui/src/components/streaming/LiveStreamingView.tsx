@@ -361,18 +361,34 @@ export function LiveStreamingView() {
             onClick={handleContinueToEvaluation}
             disabled={isPreparingEvaluation}
             style={{
-              padding: '14px 28px',
-              borderRadius: '10px',
-              background: isPreparingEvaluation ? '#6b7280' : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-              border: 'none',
-              color: 'white',
+              height: '44px',
+              padding: '0 32px',
+              borderRadius: '8px',
+              background: isPreparingEvaluation ? 'var(--bg-surface)' : 'var(--accent-cyan)',
+              border: isPreparingEvaluation ? '1px solid var(--border-default)' : 'none',
+              color: isPreparingEvaluation ? 'var(--text-secondary)' : '#000',
               fontSize: '15px',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: isPreparingEvaluation ? 'not-allowed' : 'pointer',
-              opacity: isPreparingEvaluation ? 0.6 : 1,
-              transition: 'all 0.2s',
-              boxShadow: isPreparingEvaluation ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+              opacity: isPreparingEvaluation ? 0.4 : 1,
+              transition: 'all 0.3s ease',
+              boxShadow: isPreparingEvaluation ? 'none' : '0 0 20px rgba(0, 217, 255, 0.3)',
               whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+            onMouseEnter={(e) => {
+              if (!isPreparingEvaluation) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 0 30px rgba(0, 217, 255, 0.5)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isPreparingEvaluation) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 217, 255, 0.3)';
+              }
             }}
           >
             {isPreparingEvaluation ? 'Preparing...' : 'Continue to Evaluation →'}

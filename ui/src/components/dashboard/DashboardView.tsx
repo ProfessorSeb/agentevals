@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { css } from '@emotion/react';
-import { Button, Input, Select } from 'antd';
+import { Input, Select } from 'antd';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { TraceCard } from './TraceCard';
 import { TraceTable } from './TraceTable';
@@ -155,12 +155,35 @@ export const DashboardView: React.FC = () => {
     <div css={dashboardStyle}>
       <div className="header">
         <h1 className="title">Evaluation Results</h1>
-        <Button
-          icon={<ArrowLeft size={16} />}
+        <button
           onClick={() => actions.setCurrentView('upload')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px',
+            border: '1px solid var(--border-default)',
+            background: 'var(--bg-surface)',
+            color: 'var(--text-primary)',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent-cyan)';
+            e.currentTarget.style.color = 'var(--accent-cyan)';
+            e.currentTarget.style.background = 'var(--bg-elevated)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border-default)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+            e.currentTarget.style.background = 'var(--bg-surface)';
+          }}
         >
-          Back to Upload
-        </Button>
+          <ArrowLeft size={16} />
+          Back
+        </button>
       </div>
 
       {state.errors.length > 0 && (

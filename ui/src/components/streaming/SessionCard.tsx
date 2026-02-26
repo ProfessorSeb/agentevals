@@ -165,7 +165,7 @@ export function SessionCard({ session, isSelected, onSelect, evaluationResult }:
               whiteSpace: 'nowrap',
             }}
           >
-            {isSelected ? '★ Golden' : 'Set as Golden'}
+            {isSelected ? '★ EvalSet' : 'Set as EvalSet'}
           </button>
 
           <button
