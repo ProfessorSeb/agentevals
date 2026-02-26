@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { css } from '@emotion/react';
-import { Input, Select } from 'antd';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { TraceCard } from './TraceCard';
 import { TraceTable } from './TraceTable';
 import { SummaryStats } from './SummaryStats';
 import { PerformanceCharts } from './PerformanceCharts';
 import { useTraceContext } from '../../context/TraceContext';
-import type { EvalStatus } from '../../lib/types';
 
 const dashboardStyle = css`
   max-width: 2400px;
@@ -119,28 +116,9 @@ const dashboardStyle = css`
   }
 `;
 
-const { Search } = Input;
-
 export const DashboardView: React.FC = () => {
   const { state, actions } = useTraceContext();
-  const [filterStatus, setFilterStatus] = useState<'all' | EvalStatus>('all');
-  const [searchTerm, setSearchTerm] = useState('');
   const [hoveredTraceId, setHoveredTraceId] = useState<string | null>(null);
-
-  const filteredResults = state.results.filter((result) => {
-    if (filterStatus !== 'all') {
-      const hasMatchingStatus = result.metricResults.some(
-        (m) => m.evalStatus === filterStatus
-      );
-      if (!hasMatchingStatus) return false;
-    }
-
-    if (searchTerm) {
-      return result.traceId.toLowerCase().includes(searchTerm.toLowerCase());
-    }
-
-    return true;
-  });
 
   const handleTraceClick = (traceId: string) => {
     actions.selectTrace(traceId);

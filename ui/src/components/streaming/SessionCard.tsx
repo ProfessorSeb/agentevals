@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { LiveConversationPanel } from './LiveConversationPanel';
+import type { ConversationElement } from './LiveConversationPanel';
+import { SessionMetadata } from './SessionMetadata';
 
 interface Invocation {
   invocationId: string;
@@ -21,6 +24,12 @@ interface SessionCardProps {
     status: 'active' | 'complete';
     metadata: Record<string, any>;
     invocations?: Invocation[];
+    liveElements?: ConversationElement[];
+    liveStats?: {
+      totalInputTokens: number;
+      totalOutputTokens: number;
+    };
+    startedAt?: string;
   };
   isSelected: boolean;
   onSelect: () => void;
@@ -36,11 +45,24 @@ interface SessionCardProps {
 export function SessionCard({ session, isSelected, onSelect, evaluationResult }: SessionCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const totalTokens = session.invocations?.reduce((sum, inv) => {
-    const input = inv.modelInfo?.inputTokens || 0;
-    const output = inv.modelInfo?.outputTokens || 0;
-    return sum + input + output;
-  }, 0) || 0;
+  const conversationElements = session.liveElements || [];
+  const liveStats = session.liveStats || {
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+  };
+
+  useEffect(() => {
+    if (session.status === 'active' && conversationElements.length > 0 && !expanded) {
+      setExpanded(true);
+    }
+  }, [conversationElements.length, session.status, expanded]);
+
+  const totalTokens = liveStats.totalInputTokens + liveStats.totalOutputTokens ||
+    session.invocations?.reduce((sum, inv) => {
+      const input = inv.modelInfo?.inputTokens || 0;
+      const output = inv.modelInfo?.outputTokens || 0;
+      return sum + input + output;
+    }, 0) || 0;
 
   const modelName = session.metadata?.model ||
     session.invocations?.[0]?.modelInfo?.models?.[0] ||
@@ -141,7 +163,7 @@ export function SessionCard({ session, isSelected, onSelect, evaluationResult }:
                     fontWeight: 700,
                   }}
                 >
-                  {mr.evalStatus === 'PASSED' ? '✓' : '✗'} {mr.score != null ? mr.score.toFixed(2) : 'N/A'}
+                  {mr.score != null ? mr.score.toFixed(2) : 'N/A'}
                 </div>
               ))}
             </div>
@@ -165,7 +187,7 @@ export function SessionCard({ session, isSelected, onSelect, evaluationResult }:
               whiteSpace: 'nowrap',
             }}
           >
-            {isSelected ? '★ EvalSet' : 'Set as EvalSet'}
+            {isSelected ? 'EvalSet' : 'Set as EvalSet'}
           </button>
 
           <button
@@ -190,7 +212,37 @@ export function SessionCard({ session, isSelected, onSelect, evaluationResult }:
         </div>
       </div>
 
-      {expanded && session.invocations && session.invocations.length > 0 && (
+      {expanded && session.startedAt && (totalTokens > 0 || Object.keys(session.metadata).length > 0) && (
+        <SessionMetadata
+          session={{
+            sessionId: session.sessionId,
+            traceId: session.traceId,
+            metadata: session.metadata,
+            startedAt: session.startedAt,
+            status: session.status,
+          }}
+          liveStats={liveStats}
+        />
+      )}
+
+      {expanded && conversationElements.length > 0 && (
+        <LiveConversationPanel
+          elements={conversationElements}
+          isActive={session.status === 'active'}
+        />
+      )}
+
+      {expanded && session.invocations && session.invocations.length > 0 && conversationElements.length === 0 && (
+        <details style={{ marginTop: '16px' }}>
+          <summary style={{
+            fontSize: '11px',
+            color: 'var(--text-tertiary)',
+            cursor: 'pointer',
+            fontWeight: 600,
+            padding: '8px 0',
+          }}>
+            Show Invocations ({session.invocations.length})
+          </summary>
         <div style={{
           borderTop: '1px solid var(--border)',
           paddingTop: '20px',
@@ -325,6 +377,7 @@ export function SessionCard({ session, isSelected, onSelect, evaluationResult }:
             </div>
           ))}
         </div>
+        </details>
       )}
 
     </div>

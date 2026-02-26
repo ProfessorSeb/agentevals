@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTraceContext } from '../../context/TraceContext';
 import { SessionCard } from './SessionCard';
+import type { ConversationElement } from './LiveConversationPanel';
 import { config } from '../../config';
 
 interface Invocation {
@@ -18,6 +19,12 @@ interface LiveSession {
   status: 'active' | 'complete';
   metadata: Record<string, any>;
   invocations?: Invocation[];
+  liveElements: ConversationElement[];
+  liveStats: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+  };
+  startedAt: string;
 }
 
 export function LiveStreamingView() {
@@ -65,6 +72,12 @@ export function LiveStreamingView() {
               spans: [],
               status: 'active',
               metadata: data.session.metadata || {},
+              liveElements: [],
+              liveStats: {
+                totalInputTokens: 0,
+                totalOutputTokens: 0,
+              },
+              startedAt: data.session.startedAt,
             });
             return newMap;
           });
@@ -79,6 +92,102 @@ export function LiveStreamingView() {
             newMap.set(data.sessionId, {
               ...session,
               spans: [...session.spans, data.span],
+            });
+            return newMap;
+          });
+          break;
+
+        case 'user_input':
+          setActiveSessions(prev => {
+            const session = prev.get(data.sessionId);
+            if (!session) return prev;
+
+            const newMap = new Map(prev);
+            newMap.set(data.sessionId, {
+              ...session,
+              liveElements: [
+                ...session.liveElements,
+                {
+                  type: 'user_input',
+                  timestamp: data.timestamp,
+                  invocationId: data.invocationId,
+                  data: { text: data.text },
+                },
+              ],
+            });
+            return newMap;
+          });
+          break;
+
+        case 'tool_call':
+          setActiveSessions(prev => {
+            const session = prev.get(data.sessionId);
+            if (!session) return prev;
+
+            const newMap = new Map(prev);
+            newMap.set(data.sessionId, {
+              ...session,
+              liveElements: [
+                ...session.liveElements,
+                {
+                  type: 'tool_call',
+                  timestamp: data.timestamp,
+                  invocationId: data.invocationId,
+                  data: { toolCall: data.toolCall },
+                },
+              ],
+            });
+            return newMap;
+          });
+          break;
+
+        case 'agent_response':
+          setActiveSessions(prev => {
+            const session = prev.get(data.sessionId);
+            if (!session) return prev;
+
+            const newMap = new Map(prev);
+            newMap.set(data.sessionId, {
+              ...session,
+              liveElements: [
+                ...session.liveElements,
+                {
+                  type: 'agent_response',
+                  timestamp: data.timestamp,
+                  invocationId: data.invocationId,
+                  data: { text: data.text },
+                },
+              ],
+            });
+            return newMap;
+          });
+          break;
+
+        case 'token_update':
+          if (import.meta.env.DEV) {
+            console.log('[Streaming] Token update:', data);
+          }
+          setActiveSessions(prev => {
+            const session = prev.get(data.sessionId);
+            if (!session) {
+              console.warn('[Streaming] Token update for unknown session:', data.sessionId);
+              return prev;
+            }
+
+            const newStats = {
+              ...session.liveStats,
+              totalInputTokens: session.liveStats.totalInputTokens + (data.inputTokens || 0),
+              totalOutputTokens: session.liveStats.totalOutputTokens + (data.outputTokens || 0),
+            };
+
+            if (import.meta.env.DEV) {
+              console.log('[Streaming] New stats:', newStats);
+            }
+
+            const newMap = new Map(prev);
+            newMap.set(data.sessionId, {
+              ...session,
+              liveStats: newStats,
             });
             return newMap;
           });
@@ -105,6 +214,12 @@ export function LiveStreamingView() {
                 status: 'complete',
                 metadata: {},
                 invocations: data.invocations,
+                liveElements: [],
+                liveStats: {
+                  totalInputTokens: 0,
+                  totalOutputTokens: 0,
+                },
+                startedAt: new Date().toISOString(),
               });
             } else {
               newMap.set(data.sessionId, {
@@ -213,9 +328,13 @@ export function LiveStreamingView() {
   };
 
   const sessions = Array.from(activeSessions.values());
-  const completedSessions = sessions
-    .filter(s => s.invocations && s.invocations.length > 0)
+  const activeLiveSessions = sessions
+    .filter(s => s.status === 'active')
     .sort((a, b) => b.sessionId.localeCompare(a.sessionId));
+  const completedSessions = sessions
+    .filter(s => s.status === 'complete')
+    .sort((a, b) => b.sessionId.localeCompare(a.sessionId));
+  const allSessions = [...activeLiveSessions, ...completedSessions];
 
   return (
     <div style={{
@@ -297,7 +416,7 @@ export function LiveStreamingView() {
           </div>
         </div>
 
-        {completedSessions.length > 0 && (
+        {allSessions.length > 0 && (
           <div style={{
             padding: '12px 16px',
             background: 'rgba(59, 130, 246, 0.05)',
@@ -312,7 +431,7 @@ export function LiveStreamingView() {
               color: 'var(--text-secondary)',
               fontWeight: 600,
             }}>
-              {completedSessions.length} completed session{completedSessions.length !== 1 ? 's' : ''}
+              {activeLiveSessions.length} active, {completedSessions.length} completed
             </span>
           </div>
         )}
@@ -397,7 +516,7 @@ export function LiveStreamingView() {
       )}
 
 
-      {completedSessions.length === 0 ? (
+      {allSessions.length === 0 ? (
         <div style={{
           padding: '80px 40px',
           textAlign: 'center',
@@ -431,20 +550,62 @@ export function LiveStreamingView() {
           </p>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gap: '16px',
-        }}>
-          {completedSessions.map(session => (
-            <SessionCard
-              key={session.sessionId}
-              session={session}
-              isSelected={selectedGoldenId === session.sessionId}
-              onSelect={() => setSelectedGoldenId(
-                selectedGoldenId === session.sessionId ? null : session.sessionId
-              )}
-            />
-          ))}
+        <div>
+          {activeLiveSessions.length > 0 && (
+            <div>
+              <h2 style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                Active Sessions ({activeLiveSessions.length})
+              </h2>
+              <div style={{ display: 'grid', gap: '16px', marginBottom: '32px' }}>
+                {activeLiveSessions.map(session => (
+                  <SessionCard
+                    key={session.sessionId}
+                    session={session}
+                    isSelected={selectedGoldenId === session.sessionId}
+                    onSelect={() => setSelectedGoldenId(
+                      selectedGoldenId === session.sessionId ? null : session.sessionId
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {completedSessions.length > 0 && (
+            <div>
+              <h2 style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                Completed Sessions ({completedSessions.length})
+              </h2>
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {completedSessions.map(session => (
+                  <SessionCard
+                    key={session.sessionId}
+                    session={session}
+                    isSelected={selectedGoldenId === session.sessionId}
+                    onSelect={() => setSelectedGoldenId(
+                      selectedGoldenId === session.sessionId ? null : session.sessionId
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

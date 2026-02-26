@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import WebSocket, WebSocketDisconnect
 
 from .session import TraceSession
+from .incremental_processor import IncrementalInvocationExtractor
 from ..converter import convert_traces
 from ..loader.base import Trace
 from ..loader.otlp import OtlpJsonLoader
@@ -30,6 +31,7 @@ class StreamingTraceManager:
 
     def __init__(self, session_ttl_hours: int = 2, max_sessions: int = 100):
         self.sessions: dict[str, TraceSession] = {}
+        self.incremental_extractors: dict[str, IncrementalInvocationExtractor] = {}
         self.sse_queues: list[asyncio.Queue] = []
         self.session_ttl = timedelta(hours=session_ttl_hours)
         self.max_sessions = max_sessions
@@ -100,6 +102,8 @@ class StreamingTraceManager:
 
         for session_id in to_remove:
             del self.sessions[session_id]
+            if session_id in self.incremental_extractors:
+                del self.incremental_extractors[session_id]
             logger.debug("Removed old session: %s", session_id)
 
         return len(to_remove)
@@ -139,6 +143,7 @@ class StreamingTraceManager:
                         metadata=event.get("metadata", {}),
                     )
                     self.sessions[session_id] = session
+                    self.incremental_extractors[session_id] = IncrementalInvocationExtractor()
 
                     broadcast_event = {
                         "type": "session_started",
@@ -163,6 +168,13 @@ class StreamingTraceManager:
 
                     session = self.sessions[sid]
                     session.spans.append(event["span"])
+
+                    extractor = self.incremental_extractors.get(sid)
+                    if extractor:
+                        updates = extractor.process_span(event["span"])
+                        for update in updates:
+                            update["sessionId"] = sid
+                            await self.broadcast_to_ui(update)
 
                     await self.broadcast_to_ui(
                         {
@@ -196,6 +208,9 @@ class StreamingTraceManager:
                     }
                     logger.info("Broadcasting session_complete to %d SSE clients", len(self.sse_queues))
                     await self.broadcast_to_ui(complete_event)
+
+                    if sid in self.incremental_extractors:
+                        del self.incremental_extractors[sid]
 
                     await websocket.send_json(
                         {"type": "session_complete", "invocations": invocations_data}

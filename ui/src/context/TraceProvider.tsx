@@ -112,7 +112,7 @@ export const TraceProvider: React.FC<TraceProviderProps> = ({ children }) => {
             (message) => {
               setState((prev) => ({ ...prev, progressMessage: message }));
             },
-            (traceId, status, partialResult) => {
+            (traceId, _status, partialResult) => {
               setState((prev) => {
                 if (!partialResult) return prev;
 

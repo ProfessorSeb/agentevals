@@ -3,7 +3,7 @@ import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { css } from '@emotion/react';
 import { Clock, User, Cpu, MessageSquare, CheckCircle2, XCircle, Loader2, ChevronRight, ChevronDown } from 'lucide-react';
-import type { TraceTableRow, Invocation } from '../../lib/types';
+import type { TraceTableRow } from '../../lib/types';
 import { formatTimestamp } from '../../lib/utils';
 
 interface TraceTableProps {
@@ -239,7 +239,19 @@ export const TraceTable: React.FC<TraceTableProps> = ({
         if (numTurns > 1) {
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isExpanded) {
+                    setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.traceId));
+                  } else {
+                    setExpandedRowKeys([...expandedRowKeys, record.traceId]);
+                  }
+                }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
               <MessageSquare size={14} />
               <span className="preview-text" style={{ fontWeight: 600 }}>
                 {numTurns} turns
@@ -473,18 +485,8 @@ export const TraceTable: React.FC<TraceTableProps> = ({
           expandIcon: () => null, // Hide default expand icon since we show it in the Conversation column
         }}
         onRow={(record) => ({
-          onClick: (e) => {
-            const target = e.target as HTMLElement;
-            const isConversationColumn = target.closest('td')?.cellIndex === 3;
-
-            if (isConversationColumn && (record.invocations?.length || 0) > 1) {
-              const isExpanded = expandedRowKeys.includes(record.traceId);
-              if (isExpanded) {
-                setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.traceId));
-              } else {
-                setExpandedRowKeys([...expandedRowKeys, record.traceId]);
-              }
-            } else if (record.agentName || record.startTime || record.model) {
+          onClick: () => {
+            if (record.agentName || record.startTime || record.model) {
               onRowClick(record.traceId);
             }
           },

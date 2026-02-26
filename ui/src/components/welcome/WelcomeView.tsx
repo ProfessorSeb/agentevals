@@ -61,7 +61,6 @@ const containerStyle = css`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
   padding: 24px;
 `;
 
