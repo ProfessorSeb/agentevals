@@ -404,6 +404,7 @@ export function LiveStreamingView() {
             display: 'flex',
             gap: '16px',
             alignItems: 'center',
+            justifyContent: 'space-between',
           }}>
             <span style={{
               fontSize: '13px',
@@ -412,6 +413,29 @@ export function LiveStreamingView() {
             }}>
               {activeLiveSessions.length} active, {completedSessions.length} completed
             </span>
+            {completedSessions.length > 0 && (
+              <button
+                onClick={() => {
+                  actions.clearAllSessions();
+                  if (selectedGoldenId && completedSessions.some(s => s.sessionId === selectedGoldenId)) {
+                    setSelectedGoldenId(null);
+                  }
+                }}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  background: 'transparent',
+                  border: '1.5px solid rgba(239, 68, 68, 0.4)',
+                  color: '#ef4444',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Clear completed
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -584,6 +608,10 @@ export function LiveStreamingView() {
                     onSelect={() => setSelectedGoldenId(
                       selectedGoldenId === session.sessionId ? null : session.sessionId
                     )}
+                    onRemove={() => {
+                      actions.removeSession(session.sessionId);
+                      if (selectedGoldenId === session.sessionId) setSelectedGoldenId(null);
+                    }}
                   />
                 ))}
               </div>

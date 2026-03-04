@@ -210,6 +210,21 @@ export const TraceProvider: React.FC<TraceProviderProps> = ({ children }) => {
       setStreamingSessions: (updater: (prev: Map<string, LiveSession>) => Map<string, LiveSession>) =>
         setState((prev) => ({ ...prev, streamingSessions: updater(prev.streamingSessions) })),
 
+      removeSession: (sessionId: string) =>
+        setState((prev) => {
+          const newMap = new Map(prev.streamingSessions);
+          newMap.delete(sessionId);
+          return { ...prev, streamingSessions: newMap };
+        }),
+
+      clearAllSessions: () =>
+        setState((prev) => ({
+          ...prev,
+          streamingSessions: new Map(
+            [...prev.streamingSessions].filter(([, s]) => s.status === 'active')
+          ),
+        })),
+
       selectTrace: (traceId: string | null) =>
         setState((prev) => ({ ...prev, selectedTraceId: traceId })),
 

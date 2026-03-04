@@ -46,6 +46,8 @@ export interface TraceContextType {
     setCurrentView: (view: ViewType) => void;
     setEvaluationOrigin: (view: ViewType | null) => void;
     setStreamingSessions: (updater: (prev: Map<string, LiveSession>) => Map<string, LiveSession>) => void;
+    removeSession: (sessionId: string) => void;
+    clearAllSessions: () => void;
     selectTrace: (traceId: string | null) => void;
     selectSpan: (spanId: string | null) => void;
     clearResults: () => void;

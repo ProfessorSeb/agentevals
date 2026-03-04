@@ -33,6 +33,7 @@ interface SessionCardProps {
   };
   isSelected: boolean;
   onSelect: () => void;
+  onRemove?: () => void;
   evaluationResult?: {
     metricResults: Array<{
       metricName: string;
@@ -42,7 +43,7 @@ interface SessionCardProps {
   };
 }
 
-export function SessionCard({ session, isSelected, onSelect, evaluationResult }: SessionCardProps) {
+export function SessionCard({ session, isSelected, onSelect, onRemove, evaluationResult }: SessionCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const conversationElements = session.liveElements || [];
@@ -190,6 +191,30 @@ export function SessionCard({ session, isSelected, onSelect, evaluationResult }:
           >
             {isSelected ? 'EvalSet' : 'Set as EvalSet'}
           </button>
+
+          {session.status === 'complete' && onRemove && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              title="Remove session"
+              style={{
+                padding: '8px 10px',
+                borderRadius: '8px',
+                background: 'transparent',
+                border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          )}
 
           <button
             onClick={(e) => {
