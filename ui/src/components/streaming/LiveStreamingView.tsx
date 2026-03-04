@@ -1,35 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useTraceContext } from '../../context/TraceContext';
 import { SessionCard } from './SessionCard';
-import type { ConversationElement } from './LiveConversationPanel';
 import { config } from '../../config';
 
-interface Invocation {
-  invocationId: string;
-  userText: string;
-  agentText: string;
-  toolCalls: Array<{ name: string; args: any }>;
-}
-
-interface LiveSession {
-  sessionId: string;
-  traceId: string;
-  evalSetId: string | null;
-  spans: any[];
-  status: 'active' | 'complete';
-  metadata: Record<string, any>;
-  invocations?: Invocation[];
-  liveElements: ConversationElement[];
-  liveStats: {
-    totalInputTokens: number;
-    totalOutputTokens: number;
-  };
-  startedAt: string;
-}
-
 export function LiveStreamingView() {
-  const { actions } = useTraceContext();
-  const [activeSessions, setActiveSessions] = useState<Map<string, LiveSession>>(new Map());
+  const { state, actions } = useTraceContext();
+  const activeSessions = state.streamingSessions;
+  const setActiveSessions = actions.setStreamingSessions;
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [selectedGoldenId, setSelectedGoldenId] = useState<string | null>(null);
   const [isPreparingEvaluation, setIsPreparingEvaluation] = useState(false);
@@ -315,6 +292,7 @@ export function LiveStreamingView() {
         console.log(`Loaded ${validTraceFiles.length} trace files and 1 eval set`);
       }
 
+      actions.setEvaluationOrigin('streaming');
       actions.setTraceFiles(validTraceFiles);
       actions.setEvalSet(evalSetFile);
       actions.setCurrentView('upload');

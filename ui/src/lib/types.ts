@@ -291,6 +291,37 @@ export const AVAILABLE_METRICS: MetricMetadata[] = [
   }
 ];
 
+// Streaming / Live session types
+export interface ConversationElement {
+  type: 'user_input' | 'tool_call' | 'agent_response';
+  timestamp: number;
+  invocationId: string;
+  data: any;
+}
+
+export interface StreamingInvocation {
+  invocationId: string;
+  userText: string;
+  agentText: string;
+  toolCalls: Array<{ name: string; args: any }>;
+}
+
+export interface LiveSession {
+  sessionId: string;
+  traceId: string;
+  evalSetId: string | null;
+  spans: any[];
+  status: 'active' | 'complete';
+  metadata: Record<string, any>;
+  invocations?: StreamingInvocation[];
+  liveElements: ConversationElement[];
+  liveStats: {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+  };
+  startedAt: string;
+}
+
 // Inspector-specific types
 export type ExtractionType = 'user_input' | 'tool_use' | 'tool_response' | 'final_response';
 

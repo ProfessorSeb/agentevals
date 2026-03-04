@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { TraceResult, ViewType, EvalSet, EvalSetMetadata, EvalCase, TraceTableRow } from '../lib/types';
+import type { TraceResult, ViewType, EvalSet, EvalSetMetadata, EvalCase, TraceTableRow, LiveSession } from '../lib/types';
 import type { TraceMetadata } from '../lib/trace-metadata';
 
 export interface TraceState {
@@ -22,8 +22,12 @@ export interface TraceState {
 
   // UI state
   currentView: ViewType;
+  evaluationOrigin: ViewType | null;
   selectedTraceId: string | null;
   selectedSpanId: string | null;
+
+  // Streaming state
+  streamingSessions: Map<string, LiveSession>;
 
   // Builder state
   builderEvalSet: EvalSet | null;
@@ -40,6 +44,8 @@ export interface TraceContextType {
     setThreshold: (threshold: number) => void;
     runEvaluation: () => Promise<void>;
     setCurrentView: (view: ViewType) => void;
+    setEvaluationOrigin: (view: ViewType | null) => void;
+    setStreamingSessions: (updater: (prev: Map<string, LiveSession>) => Map<string, LiveSession>) => void;
     selectTrace: (traceId: string | null) => void;
     selectSpan: (spanId: string | null) => void;
     clearResults: () => void;

@@ -1,12 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
 import { UserMessage, ToolCallMessage, AgentMessage } from './LiveMessage';
+import type { ConversationElement } from '../../lib/types';
 
-export interface ConversationElement {
-  type: 'user_input' | 'tool_call' | 'agent_response';
-  timestamp: number;
-  invocationId: string;
-  data: any;
-}
+export type { ConversationElement };
 
 interface LiveConversationPanelProps {
   elements: ConversationElement[];

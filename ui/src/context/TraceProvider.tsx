@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { TraceContext } from './TraceContext';
 import type { TraceState } from './TraceContext';
-import type { ViewType, EvalSet, EvalSetMetadata, EvalCase } from '../lib/types';
+import type { ViewType, EvalSet, EvalSetMetadata, EvalCase, LiveSession } from '../lib/types';
 import { evaluateTracesStreaming } from '../api/client';
 import { extractMetadataFromTraceFile } from '../lib/trace-metadata';
 
@@ -26,8 +26,10 @@ export const TraceProvider: React.FC<TraceProviderProps> = ({ children }) => {
     tableRows: new Map(),
     expectedTraceCount: 0,
     currentView: 'welcome',
+    evaluationOrigin: null,
     selectedTraceId: null,
     selectedSpanId: null,
+    streamingSessions: new Map(),
     builderEvalSet: null,
     builderSelectedTraceIds: [],
   });
@@ -201,6 +203,12 @@ export const TraceProvider: React.FC<TraceProviderProps> = ({ children }) => {
 
       setCurrentView: (view: ViewType) =>
         setState((prev) => ({ ...prev, currentView: view })),
+
+      setEvaluationOrigin: (view: ViewType | null) =>
+        setState((prev) => ({ ...prev, evaluationOrigin: view })),
+
+      setStreamingSessions: (updater: (prev: Map<string, LiveSession>) => Map<string, LiveSession>) =>
+        setState((prev) => ({ ...prev, streamingSessions: updater(prev.streamingSessions) })),
 
       selectTrace: (traceId: string | null) =>
         setState((prev) => ({ ...prev, selectedTraceId: traceId })),

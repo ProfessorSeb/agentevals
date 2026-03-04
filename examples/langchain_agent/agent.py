@@ -62,7 +62,8 @@ def check_prime(nums: list[int]) -> dict:
     }
 
 
-def create_dice_agent(model: str = "gpt-3.5-turbo", temperature: float = 0.0):
+#def create_dice_agent(model: str = "gpt-3.5-turbo", temperature: float = 0.0):
+def create_dice_agent(model: str = "gpt-4o-mini", temperature: float = 0.0):
     llm = ChatOpenAI(model=model, temperature=temperature)
     tools = [roll_die, check_prime]
 
