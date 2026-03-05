@@ -6,6 +6,7 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { InspectorView } from './components/inspector/InspectorView';
 import { BuilderView } from './components/builder/BuilderView';
 import { LiveStreamingView } from './components/streaming/LiveStreamingView';
+import { AnnotationQueueView } from './components/annotation-queue/AnnotationQueueView';
 
 function AppContent() {
   const { state } = useTraceContext();
@@ -18,6 +19,7 @@ function AppContent() {
       {state.currentView === 'inspector' && <InspectorView />}
       {state.currentView === 'builder' && <BuilderView />}
       {state.currentView === 'streaming' && <LiveStreamingView />}
+      {state.currentView === 'annotation-queue' && <AnnotationQueueView />}
       {state.currentView === 'comparison' && (
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-secondary)' }}>
           Comparison view coming soon...

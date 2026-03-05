@@ -3,7 +3,7 @@ import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { css } from '@emotion/react';
 import { Clock, User, Cpu, MessageSquare, CheckCircle2, XCircle, Loader2, ChevronRight, ChevronDown } from 'lucide-react';
-import type { TraceTableRow } from '../../lib/types';
+import type { TraceTableRow, Annotation } from '../../lib/types';
 import { formatTimestamp } from '../../lib/utils';
 
 interface TraceTableProps {
@@ -161,6 +161,9 @@ export const TraceTable: React.FC<TraceTableProps> = ({
   isEvaluating,
 }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [expandedAnnotationKeys, setExpandedAnnotationKeys] = useState<string[]>([]);
+  const hasAnnotations = rows.some(row => row.annotation);
+
   const columns: ColumnsType<TraceTableRow> = [
     {
       title: 'Name',
@@ -338,6 +341,57 @@ export const TraceTable: React.FC<TraceTableProps> = ({
         );
       },
     })),
+    ...(hasAnnotations ? [{
+      title: 'Annotation',
+      key: 'annotation',
+      width: 220,
+      render: (_: any, record: TraceTableRow) => {
+        const annotation: Annotation | undefined = record.annotation;
+        if (!annotation) {
+          return <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>;
+        }
+        const looksCorrect = annotation.firstPass === 'looks_correct';
+        const isAnnotationExpanded = expandedAnnotationKeys.includes(record.traceId);
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="metric-cell" style={{ justifyContent: 'flex-start' }}>
+              {annotation.comment && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isAnnotationExpanded) {
+                      setExpandedAnnotationKeys(expandedAnnotationKeys.filter(k => k !== record.traceId));
+                    } else {
+                      setExpandedAnnotationKeys([...expandedAnnotationKeys, record.traceId]);
+                    }
+                  }}
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  {isAnnotationExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </span>
+              )}
+              {looksCorrect
+                ? <CheckCircle2 size={14} color="var(--status-success)" />
+                : <XCircle size={14} color="var(--status-failure)" />}
+              <span
+                className="score-badge"
+                style={{
+                  backgroundColor: looksCorrect ? 'rgba(46, 213, 115, 0.2)' : 'rgba(255, 87, 87, 0.2)',
+                  color: looksCorrect ? 'var(--status-success)' : 'var(--status-failure)',
+                }}
+              >
+                {looksCorrect ? 'Looks correct' : "Doesn't look correct"}
+              </span>
+            </div>
+            {isAnnotationExpanded && annotation.comment && (
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', paddingLeft: '20px' }}>
+                {annotation.comment}
+              </span>
+            )}
+          </div>
+        );
+      },
+    }] : []),
   ];
 
   const expandedRowRender = (record: TraceTableRow) => {

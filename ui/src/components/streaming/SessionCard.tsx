@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LiveConversationPanel } from './LiveConversationPanel';
 import type { ConversationElement } from './LiveConversationPanel';
 import { SessionMetadata } from './SessionMetadata';
+import type { AnnotationQueue } from '../../lib/types';
 
 interface Invocation {
   invocationId: string;
@@ -28,6 +29,7 @@ interface SessionCardProps {
     liveStats?: {
       totalInputTokens: number;
       totalOutputTokens: number;
+      model?: string;
     };
     startedAt?: string;
   };
@@ -41,10 +43,30 @@ interface SessionCardProps {
       evalStatus: string;
     }>;
   };
+  annotationQueues?: AnnotationQueue[];
+  onAddToQueue?: (queueId: string) => void;
+  onCreateAndAddToQueue?: (name: string) => void;
+  queueNames?: string[];
 }
 
-export function SessionCard({ session, isSelected, onSelect, onRemove, evaluationResult }: SessionCardProps) {
+export function SessionCard({ session, isSelected, onSelect, onRemove, evaluationResult, annotationQueues, onAddToQueue, onCreateAndAddToQueue, queueNames }: SessionCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showQueuePicker, setShowQueuePicker] = useState(false);
+  const [newQueueName, setNewQueueName] = useState('');
+  const [showNewQueueInput, setShowNewQueueInput] = useState(false);
+  const queuePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (queuePickerRef.current && !queuePickerRef.current.contains(e.target as Node)) {
+        setShowQueuePicker(false);
+        setShowNewQueueInput(false);
+        setNewQueueName('');
+      }
+    };
+    if (showQueuePicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showQueuePicker]);
 
   const conversationElements = session.liveElements || [];
   const liveStats = session.liveStats || {
@@ -127,6 +149,20 @@ export function SessionCard({ session, isSelected, onSelect, onRemove, evaluatio
                 {totalTokens.toLocaleString()} tokens
               </span>
             )}
+
+            {queueNames && queueNames.length > 0 && queueNames.map(name => (
+              <span key={name} style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#8b5cf6',
+                background: 'rgba(139, 92, 246, 0.12)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                padding: '3px 8px',
+                borderRadius: '6px',
+              }}>
+                📋 {name}
+              </span>
+            ))}
           </div>
 
           <h3 style={{
@@ -149,6 +185,132 @@ export function SessionCard({ session, isSelected, onSelect, onRemove, evaluatio
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          {session.status === 'complete' && onAddToQueue && (
+            <div style={{ position: 'relative' }} ref={queuePickerRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQueuePicker(!showQueuePicker);
+                }}
+                style={{
+                  padding: '8px 14px', borderRadius: '8px',
+                  background: showQueuePicker ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                  border: '1.5px solid rgba(139, 92, 246, 0.4)',
+                  color: '#8b5cf6', fontSize: '13px', fontWeight: 600,
+                  cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                }}
+              >
+                + Queue
+              </button>
+
+              {showQueuePicker && (
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 100,
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                  borderRadius: '10px', padding: '8px', minWidth: '200px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                }}>
+                  {(annotationQueues || []).length > 0 && (
+                    <div>
+                      {(annotationQueues || []).map(q => (
+                        <button
+                          key={q.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddToQueue(q.id);
+                            setShowQueuePicker(false);
+                          }}
+                          style={{
+                            display: 'block', width: '100%', padding: '8px 10px',
+                            borderRadius: '6px', background: 'transparent', border: 'none',
+                            color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500,
+                            cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-primary)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          {q.name} <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>({q.items.length})</span>
+                        </button>
+                      ))}
+                      <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '6px 0' }} />
+                    </div>
+                  )}
+
+                  {showNewQueueInput ? (
+                    <div style={{ padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <input
+                        autoFocus
+                        value={newQueueName}
+                        onChange={(e) => setNewQueueName(e.target.value)}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter' && newQueueName.trim() && onCreateAndAddToQueue) {
+                            onCreateAndAddToQueue(newQueueName.trim());
+                            setNewQueueName('');
+                            setShowNewQueueInput(false);
+                            setShowQueuePicker(false);
+                          }
+                          if (e.key === 'Escape') setShowNewQueueInput(false);
+                        }}
+                        placeholder="Queue name"
+                        style={{
+                          padding: '6px 10px', borderRadius: '6px',
+                          border: '1.5px solid var(--border-default)',
+                          background: 'var(--bg-primary)', color: 'var(--text-primary)',
+                          fontSize: '12px', outline: 'none', width: '100%', boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (newQueueName.trim() && onCreateAndAddToQueue) {
+                              onCreateAndAddToQueue(newQueueName.trim());
+                              setNewQueueName('');
+                              setShowNewQueueInput(false);
+                              setShowQueuePicker(false);
+                            }
+                          }}
+                          style={{
+                            flex: 1, padding: '6px', borderRadius: '6px',
+                            background: 'var(--accent-cyan)', border: 'none',
+                            color: '#000', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          Create
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowNewQueueInput(false); setNewQueueName(''); }}
+                          style={{
+                            padding: '6px 8px', borderRadius: '6px', background: 'transparent',
+                            border: '1px solid var(--border)', color: 'var(--text-secondary)',
+                            fontSize: '12px', cursor: 'pointer',
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowNewQueueInput(true); }}
+                      style={{
+                        display: 'block', width: '100%', padding: '8px 10px',
+                        borderRadius: '6px', background: 'transparent', border: 'none',
+                        color: '#8b5cf6', fontSize: '13px', fontWeight: 600,
+                        cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139, 92, 246, 0.08)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      + New queue
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {evaluationResult && (
             <div style={{ display: 'flex', gap: '4px' }}>
               {evaluationResult.metricResults.map((mr) => (

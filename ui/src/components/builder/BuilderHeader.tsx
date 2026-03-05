@@ -2,6 +2,7 @@ import React from 'react';
 import { css } from '@emotion/react';
 import { Button } from 'antd';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useTraceContext } from '../../context/TraceContext';
 
 interface BuilderHeaderProps {
   onBack: () => void;
@@ -14,6 +15,9 @@ export const BuilderHeader: React.FC<BuilderHeaderProps> = ({
   onSave,
   evalSetId,
 }) => {
+  const { state, actions } = useTraceContext();
+  const hasQueuedItems = state.annotationQueues.some(q => q.items.length > 0);
+
   return (
     <div css={headerStyle}>
       <div css={leftSectionStyle}>
@@ -28,6 +32,22 @@ export const BuilderHeader: React.FC<BuilderHeaderProps> = ({
       </div>
 
       <div css={rightSectionStyle}>
+        {hasQueuedItems && (
+          <button
+            onClick={() => actions.setCurrentView('annotation-queue')}
+            css={css`
+              display: flex; align-items: center; gap: 8px;
+              padding: 8px 14px; border-radius: 6px;
+              border: 1px solid rgba(139, 92, 246, 0.4);
+              background: transparent; color: #8b5cf6;
+              font-size: 0.875rem; font-weight: 500; cursor: pointer;
+              transition: all 0.2s ease;
+              &:hover { background: rgba(139, 92, 246, 0.08); }
+            `}
+          >
+            Annotation Queues
+          </button>
+        )}
         <Button
           type="primary"
           icon={<Save size={16} />}
