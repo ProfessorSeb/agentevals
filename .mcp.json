@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agentevals": {
+      "command": "/usr/bin/env",
+      "args": ["uv", "run", "agentevals", "mcp"]
+    }
+  }
+}

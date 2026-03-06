@@ -239,5 +239,18 @@ def serve(dev: bool, host: str, port: int, eval_sets: str | None, headless: bool
         )
 
 
+@main.command("mcp")
+@click.option(
+    "--server-url",
+    default=None,
+    help="agentevals server URL for session tools (default: http://localhost:8001 or AGENTEVALS_SERVER_URL).",
+)
+def mcp_command(server_url: str | None) -> None:
+    """Start the MCP server on stdio for use with Claude Code and other MCP clients."""
+    from .mcp_server import create_server
+
+    create_server(server_url=server_url).run("stdio")
+
+
 if __name__ == "__main__":
     main()
