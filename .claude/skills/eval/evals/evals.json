@@ -1,0 +1,46 @@
+{
+  "skill_name": "eval",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I ran the dice agent twice and both sessions are on the agentevals server. Session IDs: dice-agent-gemini-2.5-flash-lite-20260306-160809-03676 and dice-agent-gemini-2.5-flash-lite-20260306-160828-64013. Did the second run regress compared to the first?",
+      "expected_output": "Lists sessions, uses first as golden, calls evaluate_sessions, presents comparison table with scores, explains which tool call changed",
+      "assertions": [
+        {"text": "Response attempts to call list_sessions or evaluate_sessions MCP tool (or explains it would do so if the server were accessible)"},
+        {"text": "Response identifies a 'golden' session concept — the reference run to compare against"},
+        {"text": "Response presents or describes a comparison table with scores and delta for both sessions"},
+        {"text": "Response mentions /inspect or suggests inspecting the session to understand what changed"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Evaluate my agent trace at /tmp/run_42.jsonl against the golden set /tmp/golden.json",
+      "expected_output": "Detects otlp-json format from .jsonl extension, attempts to run eval, explains scores or handles missing file",
+      "assertions": [
+        {"text": "Response identifies the .jsonl extension as OTLP format (otlp-json), not jaeger-json"},
+        {"text": "Response handles the missing file gracefully (does not silently fail or crash without explanation)"},
+        {"text": "Response explains the format difference between .jsonl (OTLP) and .json (Jaeger) or at minimum names the correct format for each"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want to check if my dice agent behaved correctly in the session dice-agent-gemini-2.5-flash-lite-20260306-160828-64013. I think something went wrong in the last turn. Score it for me.",
+      "expected_output": "Identifies this as a session, calls evaluate_sessions using the other session as golden, shows score, explains the regression in the final turn",
+      "assertions": [
+        {"text": "Response attempts to call list_sessions or evaluate_sessions (or explains the workflow if tools unavailable)"},
+        {"text": "Response explains that a golden/reference session is needed to compare against"},
+        {"text": "Response describes what a regression in the last turn would look like (missing tool call, wrong tool, or score below 1.0)"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run eval on the dice agent session dice-agent-gemini-2.5-flash-lite-20260306-160809-03676 but I don't have an eval set yet",
+      "expected_output": "Explains that for session-based eval the server auto-derives the eval set from a golden session, suggests the other dice session as golden, or offers metric alternatives",
+      "assertions": [
+        {"text": "Response explains that tool_trajectory_avg_score requires a reference (eval set or golden session)"},
+        {"text": "Response suggests at least one path forward: use another session as golden, use hallucinations_v1, or create an eval set"},
+        {"text": "Response gives the user a concrete next step rather than just describing the problem"}
+      ]
+    }
+  ]
+}

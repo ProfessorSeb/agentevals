@@ -125,6 +125,35 @@ AGENTEVALS_SERVER_URL=http://localhost:9000 uv run agentevals mcp
 uv run agentevals mcp --server-url http://localhost:9000
 ```
 
+## Claude Code Skills
+
+`.claude/skills/` contains two slash-command workflows that orchestrate the MCP tools into guided conversations. They're available automatically when you open this repo in Claude Code (the `.mcp.json` registers the server; the skills register from `.claude/skills/`).
+
+| Skill | Trigger phrases | Requires `serve --dev` |
+|-------|----------------|:---:|
+| `/eval` | "eval this trace", "did my agent regress", "compare runs", "score session X" | for sessions |
+| `/inspect` | "show me what my agent did", "inspect session", "walk me through the last run" | yes |
+
+### `/eval` — Score agent behavior
+
+Evaluates both local trace files and live streaming sessions:
+
+- **Trace files**: detects format from extension (`.jsonl` → OTLP, `.json` → Jaeger), calls `evaluate_traces`, presents a score table with interpretation
+- **Session regression testing**: lists sessions, identifies the golden reference, calls `evaluate_sessions`, shows a comparison table with per-session deltas and explains which tool calls diverged
+
+### `/inspect` — Understand what an agent did
+
+Presents a readable turn-by-turn narrative of a live session:
+
+```
+Turn 1:
+  User: [what the user asked]
+  Tools: tool_name(arg=val, ...) → [what this achieves]
+  Response: [response text]
+```
+
+Flags anomalies (missing tool calls, repeated calls, abrupt stops) and suggests `/eval` if you want to score the session against a golden reference.
+
 ## Local Development
 
 The project uses Nix for reproducible development environments. All dependencies (Python, Node.js, packages) are managed via `flake.nix`:
