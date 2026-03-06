@@ -1,8 +1,13 @@
+<h1 align="center">agentevals</h1>
+
 `agentevals` scores agent behavior from OpenTelemetry traces without re-running the agent. It parses trace spans from `otlp` streams, or Jaeger JSON format and evaluates them against golden eval sets using ADK's evaluation framework.
 
 Unlike ADK's LocalEvalService, which couples agent execution with evaluation, agentevals only handles scoring: it takes pre-recorded traces and compares them against expected behavior using metrics like tool trajectory matching, response quality, and LLM-based judgments.
 
 The tool provides a CLI for local dev work, scripting and CI pipelines, a web UI for visual inspection, EvalSet creation and interactive evaluation, and an MCP server so Claude Code can run evaluations and inspect live sessions directly from a conversation.
+
+> [!IMPORTANT]
+> This project is under active development. Expect breaking changes.
 
 ## Getting Started
 
