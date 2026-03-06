@@ -1,4 +1,4 @@
-import type { Trace, Span, Invocation, Content, ToolCall, ToolResponse } from './types';
+import type { Trace, Span, Invocation, Content, ToolCall, ToolResponse, IntermediateData } from './types';
 import { safeJsonParse } from './utils';
 
 const ADK_SCOPE = 'gcp.vertex.agent';
@@ -390,19 +390,7 @@ function convertGenAIMultiTurn(llmSpans: Span[], trace: Trace): Invocation[] {
   return invocations;
 }
 
-function isDescendantOf(span: Span, ancestor: Span): boolean {
-  const queue = [...ancestor.children];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    if (current.spanId === span.spanId) {
-      return true;
-    }
-    queue.push(...current.children);
-  }
-  return false;
-}
-
-function convertGenAIRootSpan(rootSpan: Span, trace: Trace): Invocation | null {
+function convertGenAIRootSpan(rootSpan: Span, _trace: Trace): Invocation | null {
   const llmSpans = findDescendantLLMSpans(rootSpan);
   const toolSpans = findDescendantToolSpans(rootSpan);
 
@@ -480,7 +468,7 @@ function extractGenAIUserContent(llmSpan: Span): Content | null {
 
   if (!messagesAttr) return null;
 
-  const messages = safeJsonParse<any[]>(messagesAttr, null);
+  const messages = safeJsonParse<any[] | null>(messagesAttr, null);
   if (!messages || !Array.isArray(messages)) return null;
 
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -503,7 +491,7 @@ function extractGenAIFinalResponse(llmSpan: Span): Content | null {
 
   if (!completionAttr) return null;
 
-  const messages = safeJsonParse<any[]>(completionAttr, null);
+  const messages = safeJsonParse<any[] | null>(completionAttr, null);
   if (!messages || !Array.isArray(messages)) return null;
 
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -567,7 +555,7 @@ function extractGenAIToolTrajectory(toolSpans: Span[], llmSpans: Span[]): { tool
 
     if (!completionAttr) continue;
 
-    const messages = safeJsonParse<any[]>(completionAttr, null);
+    const messages = safeJsonParse<any[] | null>(completionAttr, null);
     if (!messages || !Array.isArray(messages)) continue;
 
     for (const msg of messages) {

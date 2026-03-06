@@ -196,7 +196,6 @@ function extractGenAIMetadata(trace: Trace): TraceMetadata {
       metadata.finalOutputPreview = extractGenAIOutputPreview(completionAttr);
     }
   } else {
-    const rootSpan = trace.rootSpans[0];
     metadata.agentName = 'GenAI Agent';
     metadata.sessionId = trace.traceId.substring(0, 12);
   }
