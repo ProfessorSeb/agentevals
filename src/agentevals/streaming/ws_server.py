@@ -262,8 +262,10 @@ class StreamingTraceManager:
 
         except WebSocketDisconnect:
             if session_id and session_id in self.sessions:
-                self.sessions[session_id].is_complete = False
-                logger.warning("Client disconnected: %s", session_id)
+                if not self.sessions[session_id].is_complete:
+                    logger.warning("Client disconnected without ending session: %s", session_id)
+                else:
+                    logger.info("Client disconnected after session end: %s", session_id)
 
     def _enrich_spans_with_logs(self, spans: list[dict], logs: list[dict], session_id: str = None) -> list[dict]:
         """Enrich spans with message content from GenAI logs."""
