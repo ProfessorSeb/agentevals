@@ -165,6 +165,32 @@ export const DashboardView: React.FC = () => {
               Live View
             </button>
           )}
+          {state.annotationQueues.some(q => q.items.length > 0) && (
+            <button
+              onClick={() => actions.setCurrentView('annotation-queue')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: '1px solid rgba(139, 92, 246, 0.4)',
+                background: 'var(--bg-surface)',
+                color: '#8b5cf6',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--bg-surface)';
+              }}
+            >
+              Annotation Queues
+            </button>
+          )}
           <button
             onClick={() => actions.setCurrentView('upload')}
             style={{

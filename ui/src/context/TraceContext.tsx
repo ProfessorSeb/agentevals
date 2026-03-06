@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { TraceResult, ViewType, EvalSet, EvalSetMetadata, EvalCase, TraceTableRow, LiveSession } from '../lib/types';
+import type { TraceResult, ViewType, EvalSet, EvalSetMetadata, EvalCase, TraceTableRow, LiveSession, AnnotationQueue, Annotation } from '../lib/types';
 import type { TraceMetadata } from '../lib/trace-metadata';
 
 export interface TraceState {
@@ -29,6 +29,11 @@ export interface TraceState {
   // Streaming state
   streamingSessions: Map<string, LiveSession>;
 
+  // Annotation queue state
+  annotationQueues: AnnotationQueue[];
+  currentAnnotationQueueId: string | null;
+  pendingAnnotations: Map<string, Annotation>;
+
   // Builder state
   builderEvalSet: EvalSet | null;
   builderSelectedTraceIds: string[];
@@ -51,6 +56,13 @@ export interface TraceContextType {
     selectTrace: (traceId: string | null) => void;
     selectSpan: (spanId: string | null) => void;
     clearResults: () => void;
+
+    // Annotation queue actions
+    createAnnotationQueue: (name: string) => string;
+    addToAnnotationQueue: (queueId: string, session: LiveSession) => void;
+    annotateQueueItem: (queueId: string, sessionId: string, annotation: Annotation) => void;
+    setCurrentAnnotationQueueId: (id: string | null) => void;
+    setPendingAnnotations: (annotations: Map<string, Annotation>) => void;
 
     // Builder actions
     setBuilderEvalSet: (evalSet: EvalSet | null) => void;

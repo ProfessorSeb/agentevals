@@ -159,6 +159,7 @@ export interface TraceTableRow {
   conversionWarnings: string[];
   error?: string;
   performanceMetrics?: PerformanceMetrics;
+  annotation?: Annotation;
 }
 
 // Configuration
@@ -188,7 +189,7 @@ export interface EvalSet {
 }
 
 // View types
-export type ViewType = 'welcome' | 'upload' | 'dashboard' | 'inspector' | 'comparison' | 'builder' | 'streaming';
+export type ViewType = 'welcome' | 'upload' | 'dashboard' | 'inspector' | 'comparison' | 'builder' | 'streaming' | 'annotation-queue';
 
 // Metric metadata type
 export interface MetricMetadata {
@@ -361,4 +362,34 @@ export interface InspectorUIState {
 export interface ElementReference {
   type: 'span' | 'data' | 'json';
   id: string;
+}
+
+// Annotation queue types
+export type FirstPassLabel = 'looks_correct' | 'doesnt_look_correct';
+
+export interface Annotation {
+  firstPass: FirstPassLabel;
+  comment: string;
+  annotatedAt: string;
+}
+
+export interface AnnotationQueueItem {
+  sessionId: string;
+  traceId: string;
+  agentName?: string;
+  startTime?: string;
+  model?: string;
+  totalTokens?: number;
+  annotation?: Annotation;
+  invocations?: StreamingInvocation[];
+  liveElements?: ConversationElement[];
+  liveStats?: { totalInputTokens: number; totalOutputTokens: number; model?: string };
+  metadata?: Record<string, any>;
+}
+
+export interface AnnotationQueue {
+  id: string;
+  name: string;
+  items: AnnotationQueueItem[];
+  createdAt: string;
 }

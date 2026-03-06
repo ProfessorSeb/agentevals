@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTraceContext } from '../../context/TraceContext';
 import { SessionCard } from './SessionCard';
 import { config } from '../../config';
+import type { LiveSession } from '../../lib/types';
 
 export function LiveStreamingView() {
   const { state, actions } = useTraceContext();
@@ -10,6 +11,24 @@ export function LiveStreamingView() {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [selectedGoldenId, setSelectedGoldenId] = useState<string | null>(null);
   const [isPreparingEvaluation, setIsPreparingEvaluation] = useState(false);
+
+  const totalQueuedSessions = state.annotationQueues.reduce((sum, q) => sum + q.items.length, 0);
+
+  const handleAddToQueue = (session: LiveSession, queueId: string) => {
+    actions.addToAnnotationQueue(queueId, session);
+    actions.setCurrentAnnotationQueueId(queueId);
+  };
+
+  const handleCreateAndAddToQueue = (session: LiveSession, name: string) => {
+    const id = actions.createAnnotationQueue(name);
+    actions.addToAnnotationQueue(id, session);
+    actions.setCurrentAnnotationQueueId(id);
+  };
+
+  const getQueueNamesForSession = (sessionId: string): string[] =>
+    state.annotationQueues
+      .filter(q => q.items.some(item => item.sessionId === sessionId))
+      .map(q => q.name);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -440,6 +459,40 @@ export function LiveStreamingView() {
         )}
       </div>
 
+      {totalQueuedSessions > 0 && (
+        <div style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)',
+          borderRadius: '12px',
+          marginBottom: '16px',
+          border: '2px solid rgba(139, 92, 246, 0.2)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#8b5cf6', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Annotation Queues
+            </div>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
+              {totalQueuedSessions} session{totalQueuedSessions !== 1 ? 's' : ''} across {state.annotationQueues.length} queue{state.annotationQueues.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button
+            onClick={() => actions.setCurrentView('annotation-queue')}
+            style={{
+              padding: '8px 20px', borderRadius: '8px',
+              background: 'rgba(139, 92, 246, 0.15)',
+              border: '1.5px solid rgba(139, 92, 246, 0.4)',
+              color: '#8b5cf6', fontSize: '13px', fontWeight: 600,
+              cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+            }}
+          >
+            Open Annotation Queues →
+          </button>
+        </div>
+      )}
+
       {selectedGoldenId && (
         <div style={{
           padding: '24px',
@@ -580,6 +633,10 @@ export function LiveStreamingView() {
                     onSelect={() => setSelectedGoldenId(
                       selectedGoldenId === session.sessionId ? null : session.sessionId
                     )}
+                    annotationQueues={state.annotationQueues}
+                    onAddToQueue={(queueId) => handleAddToQueue(session, queueId)}
+                    onCreateAndAddToQueue={(name) => handleCreateAndAddToQueue(session, name)}
+                    queueNames={getQueueNamesForSession(session.sessionId)}
                   />
                 ))}
               </div>
@@ -612,6 +669,10 @@ export function LiveStreamingView() {
                       actions.removeSession(session.sessionId);
                       if (selectedGoldenId === session.sessionId) setSelectedGoldenId(null);
                     }}
+                    annotationQueues={state.annotationQueues}
+                    onAddToQueue={(queueId) => handleAddToQueue(session, queueId)}
+                    onCreateAndAddToQueue={(name) => handleCreateAndAddToQueue(session, name)}
+                    queueNames={getQueueNamesForSession(session.sessionId)}
                   />
                 ))}
               </div>

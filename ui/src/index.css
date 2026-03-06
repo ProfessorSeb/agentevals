@@ -175,16 +175,38 @@ body::before {
   color: var(--text-primary) !important;
 }
 
+.ant-select-selection-placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+.ant-select-arrow {
+  color: var(--text-secondary) !important;
+}
+
+.ant-select-selection-item {
+  color: var(--text-primary) !important;
+}
+
 .ant-select-dropdown {
-  background-color: var(--bg-elevated);
+  background-color: var(--bg-elevated) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
 }
 
 .ant-select-item {
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
+  background: transparent !important;
 }
 
-.ant-select-item-option-selected {
-  background-color: var(--bg-surface) !important;
+.ant-select-item:hover,
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: var(--bg-primary) !important;
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: var(--accent-cyan) !important;
+  font-weight: 600 !important;
 }
 
 .ant-slider-track {

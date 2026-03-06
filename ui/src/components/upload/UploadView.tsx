@@ -201,13 +201,24 @@ export const UploadView: React.FC = () => {
             <ArrowLeft size={16} />
             Back to Welcome
           </button>
-          <button
-            className="nav-button"
-            onClick={() => actions.setCurrentView('builder')}
-          >
-            <FileJson size={16} />
-            Open EvalSet Builder
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {state.annotationQueues.some(q => q.items.length > 0) && (
+              <button
+                className="nav-button"
+                onClick={() => actions.setCurrentView('annotation-queue')}
+                style={{ borderColor: 'rgba(139, 92, 246, 0.4)', color: '#8b5cf6' }}
+              >
+                Annotation Queues
+              </button>
+            )}
+            <button
+              className="nav-button"
+              onClick={() => actions.setCurrentView('builder')}
+            >
+              <FileJson size={16} />
+              Open EvalSet Builder
+            </button>
+          </div>
         </div>
         <h1 className="title">agentevals</h1>
         <p className="subtitle">
