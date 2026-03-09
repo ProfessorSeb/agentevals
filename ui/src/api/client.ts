@@ -215,6 +215,14 @@ export async function validateEvalSet(evalSetFile: File) {
   }
 }
 
+export async function getConfig(): Promise<{ apiKeys: { google: boolean; anthropic: boolean; openai: boolean } }> {
+  const response = await fetch(`${API_BASE_URL}/config`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch config: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 /**
  * Health check
  */

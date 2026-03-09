@@ -28,6 +28,18 @@ async def health_check():
     return {"status": "ok", "version": __version__}
 
 
+@router.get("/config")
+async def get_config():
+    """Return environment configuration, including which API keys are available."""
+    return {
+        "apiKeys": {
+            "google": bool(os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")),
+            "anthropic": bool(os.environ.get("ANTHROPIC_API_KEY")),
+            "openai": bool(os.environ.get("OPENAI_API_KEY")),
+        }
+    }
+
+
 @router.get("/metrics")
 async def list_metrics():
     """List available metrics with metadata.

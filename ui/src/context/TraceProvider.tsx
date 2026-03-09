@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { TraceContext } from './TraceContext';
 import type { TraceState } from './TraceContext';
 import type { ViewType, EvalSet, EvalSetMetadata, EvalCase, LiveSession, AnnotationQueue, Annotation } from '../lib/types';
-import { evaluateTracesStreaming } from '../api/client';
+import { evaluateTracesStreaming, getConfig } from '../api/client';
 import { extractMetadataFromTraceFile } from '../lib/trace-metadata';
 
 interface TraceProviderProps {
@@ -19,6 +19,7 @@ export const TraceProvider: React.FC<TraceProviderProps> = ({ children }) => {
     threshold: 0.8,
     traceMetadata: new Map(),
     isLoadingMetadata: false,
+    apiKeyStatus: null,
     isEvaluating: false,
     progressMessage: '',
     results: [],
@@ -36,6 +37,12 @@ export const TraceProvider: React.FC<TraceProviderProps> = ({ children }) => {
     builderEvalSet: null,
     builderSelectedTraceIds: [],
   });
+
+  useEffect(() => {
+    getConfig()
+      .then((cfg) => setState((prev) => ({ ...prev, apiKeyStatus: cfg.apiKeys })))
+      .catch(() => {}); // silently ignore if backend is unreachable
+  }, []);
 
   const actions = useMemo(
     () => ({

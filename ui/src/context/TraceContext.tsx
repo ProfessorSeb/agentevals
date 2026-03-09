@@ -2,6 +2,12 @@ import { createContext, useContext } from 'react';
 import type { TraceResult, ViewType, EvalSet, EvalSetMetadata, EvalCase, TraceTableRow, LiveSession, AnnotationQueue, Annotation } from '../lib/types';
 import type { TraceMetadata } from '../lib/trace-metadata';
 
+export interface ApiKeyStatus {
+  google: boolean;
+  anthropic: boolean;
+  openai: boolean;
+}
+
 export interface TraceState {
   // Upload state
   traceFiles: File[];
@@ -11,6 +17,7 @@ export interface TraceState {
   threshold: number;
   traceMetadata: Map<string, TraceMetadata>;
   isLoadingMetadata: boolean;
+  apiKeyStatus: ApiKeyStatus | null;
 
   // Evaluation state
   isEvaluating: boolean;

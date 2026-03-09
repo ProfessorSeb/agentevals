@@ -173,11 +173,13 @@ const uploadViewStyle = css`
 `;
 
 const JUDGE_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'claude-3.5-sonnet',
-  'gpt-4o',
-];
+  { value: 'gemini-2.5-flash', provider: 'google' },
+  { value: 'gemini-2.0-flash', provider: 'google' },
+  { value: 'anthropic/claude-3.5-sonnet', provider: 'anthropic' },
+  { value: 'openai/gpt-4o', provider: 'openai' },
+] as const;
+
+type JudgeModelProvider = typeof JUDGE_MODELS[number]['provider'];
 
 export const UploadView: React.FC = () => {
   const { state, actions } = useTraceContext();
@@ -430,13 +432,40 @@ export const UploadView: React.FC = () => {
             <Select
               value={state.judgeModel}
               onChange={actions.setJudgeModel}
-              options={JUDGE_MODELS.map((model) => ({ label: model, value: model }))}
+              options={JUDGE_MODELS.map(({ value }) => ({ label: value, value }))}
               style={{ width: '100%' }}
               size="small"
             />
-            <span className="setting-hint">
-              LLM for judge-based metrics
-            </span>
+            {state.apiKeyStatus && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                {([
+                  { label: 'GOOGLE_API_KEY', provider: 'google' as const },
+                  { label: 'ANTHROPIC_API_KEY', provider: 'anthropic' as const },
+                  { label: 'OPENAI_API_KEY', provider: 'openai' as const },
+                ] as const).map(({ label, provider }) => {
+                  const ok = state.apiKeyStatus![provider];
+                  return (
+                    <span key={provider} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: ok ? 'var(--status-success)' : 'var(--status-failure)' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: ok ? 'var(--status-success)' : 'var(--status-failure)', flexShrink: 0 }} />
+                      {label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            {(() => {
+              const selected = JUDGE_MODELS.find((m) => m.value === state.judgeModel);
+              const provider = selected?.provider as JudgeModelProvider | undefined;
+              if (!provider || !state.apiKeyStatus || state.apiKeyStatus[provider]) return null;
+              const keyName = provider === 'google' ? 'GOOGLE_API_KEY / GEMINI_API_KEY'
+                : provider === 'anthropic' ? 'ANTHROPIC_API_KEY'
+                : 'OPENAI_API_KEY';
+              return (
+                <span style={{ fontSize: '11px', color: 'var(--status-failure)', marginTop: 2 }}>
+                  {keyName} is not set — this model will fail
+                </span>
+              );
+            })()}
           </div>
 
           <div className="setting-item" style={{ marginTop: 10 }}>
