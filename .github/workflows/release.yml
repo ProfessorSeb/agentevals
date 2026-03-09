@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: true
 
 permissions:
   contents: read
@@ -26,12 +31,14 @@ jobs:
 
       - name: Verify tag matches pyproject.toml version
         run: |
+          REF=${{ github.event.inputs.tag || github.ref_name }}
           TOML_VERSION=$(grep '^version' pyproject.toml | cut -d'"' -f2)
-          TAG_VERSION=${GITHUB_REF_NAME#v}
+          TAG_VERSION=${REF#v}
           if [ "$TOML_VERSION" != "$TAG_VERSION" ]; then
-            echo "Error: tag $GITHUB_REF_NAME does not match pyproject.toml version $TOML_VERSION"
+            echo "Error: $REF does not match pyproject.toml version $TOML_VERSION"
             exit 1
           fi
+          echo "RELEASE_TAG=$REF" >> $GITHUB_ENV
 
       - name: Build core and bundled wheels
         run: make release
@@ -56,6 +63,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2.5.0
         with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: dist/*.whl
           generate_release_notes: true
 
