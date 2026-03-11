@@ -226,6 +226,35 @@ export async function getConfig(): Promise<{ apiKeys: { google: boolean; anthrop
 /**
  * Health check
  */
+export async function generateBugReport(diagnostics: {
+  user_description: string;
+  browser_info: Record<string, unknown>;
+  console_logs: Array<Record<string, unknown>>;
+  app_state: Record<string, unknown>;
+  network_errors: Array<Record<string, unknown>>;
+}): Promise<Blob> {
+  const response = await fetch(config.api.endpoints.debugBundle, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(diagnostics),
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Failed to generate bug report: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+    } catch {
+      // Fallback to statusText
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.blob();
+}
+
 export async function healthCheck() {
   try {
     const response = await fetch(`${API_BASE_URL}/health`);

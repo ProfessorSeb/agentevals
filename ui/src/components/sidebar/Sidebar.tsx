@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { css } from '@emotion/react';
-import { Radio, Play, FileJson } from 'lucide-react';
+import { Radio, Play, FileJson, Bug } from 'lucide-react';
 import { useTraceContext } from '../../context/TraceContext';
 import type { ViewType } from '../../lib/types';
+import { BugReportModal } from '../bug-report/BugReportModal';
 
 type SidebarSection = 'streaming' | 'offline' | 'builder';
 
@@ -22,43 +23,60 @@ function getActiveSection(currentView: ViewType): SidebarSection | null {
 export const Sidebar: React.FC = () => {
   const { state, actions } = useTraceContext();
   const activeSection = getActiveSection(state.currentView);
+  const [showBugReport, setShowBugReport] = useState(false);
 
   return (
-    <nav css={sidebarStyle}>
-      <div css={brandStyle} onClick={() => actions.setCurrentView('welcome')}>
-        agentevals
-      </div>
+    <>
+      <nav css={sidebarStyle}>
+        <div css={brandStyle} onClick={() => actions.setCurrentView('welcome')}>
+          agentevals
+        </div>
 
-      <div css={navListStyle}>
-        <button
-          css={[navItemStyle, activeSection === 'streaming' && activeItemStyle]}
-          onClick={() => actions.setCurrentView('streaming')}
-        >
-          <Radio size={18} />
-          Local Development
-        </button>
+        <div css={navListStyle}>
+          <button
+            css={[navItemStyle, activeSection === 'streaming' && activeItemStyle]}
+            onClick={() => actions.setCurrentView('streaming')}
+          >
+            <Radio size={18} />
+            Local Development
+          </button>
 
-        <button
-          css={[navItemStyle, activeSection === 'offline' && activeItemStyle]}
-          onClick={() => actions.setCurrentView('upload')}
-        >
-          <Play size={18} />
-          Evaluations
-        </button>
+          <button
+            css={[navItemStyle, activeSection === 'offline' && activeItemStyle]}
+            onClick={() => actions.setCurrentView('upload')}
+          >
+            <Play size={18} />
+            Evaluations
+          </button>
 
-        <button
-          css={[navItemStyle, activeSection === 'builder' && activeItemStyle]}
-          onClick={() => actions.setCurrentView('builder')}
-        >
-          <FileJson size={18} />
-          EvalSet Builder
-        </button>
-      </div>
+          <button
+            css={[navItemStyle, activeSection === 'builder' && activeItemStyle]}
+            onClick={() => actions.setCurrentView('builder')}
+          >
+            <FileJson size={18} />
+            EvalSet Builder
+          </button>
+        </div>
 
-      {state.version && (
-        <div css={footerStyle}>v{state.version}</div>
+        <div css={footerStyle}>
+          <button
+            onClick={() => setShowBugReport(true)}
+            css={bugReportButtonStyle}
+            title="Generate bug report"
+          >
+            <Bug size={14} />
+            Bug Report
+          </button>
+          {state.version && (
+            <span>v{state.version}</span>
+          )}
+        </div>
+      </nav>
+
+      {showBugReport && (
+        <BugReportModal onClose={() => setShowBugReport(false)} />
       )}
-    </nav>
+    </>
   );
 };
 
@@ -121,11 +139,37 @@ const navItemStyle = css`
 
 const footerStyle = css`
   margin-top: auto;
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-top: 1px solid var(--border-default);
   font-size: 0.75rem;
   color: var(--text-tertiary);
   font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const bugReportButtonStyle = css`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-display);
+  width: 100%;
+
+  &:hover {
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    border-color: var(--accent-cyan);
+  }
 `;
 
 const activeItemStyle = css`
