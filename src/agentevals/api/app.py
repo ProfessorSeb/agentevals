@@ -35,13 +35,15 @@ async def lifespan(app: FastAPI):
     )
     ae_logger = logging.getLogger("agentevals")
     ae_logger.setLevel(log_level)
-    log_buffer.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
-    ae_logger.addHandler(log_buffer)
+    if log_buffer not in ae_logger.handlers:
+        log_buffer.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
+        ae_logger.addHandler(log_buffer)
     if _trace_manager:
         _trace_manager.start_cleanup_task()
     yield
     if _trace_manager:
         await _trace_manager.shutdown()
+    ae_logger.removeHandler(log_buffer)
 
 
 app = FastAPI(

@@ -85,19 +85,16 @@ class StreamingTraceManager:
         """Gracefully shut down: close SSE clients and cancel background tasks."""
         for queue in self.sse_queues:
             queue.put_nowait(None)
-        for task in self._completion_timers.values():
-            task.cancel()
-        self._completion_timers.clear()
-        for task in self._idle_timers.values():
-            task.cancel()
-        self._idle_timers.clear()
+        pending = list(self._completion_timers.values()) + list(self._idle_timers.values())
         if self._cleanup_task:
-            self._cleanup_task.cancel()
-            try:
-                await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
+            pending.append(self._cleanup_task)
             self._cleanup_task = None
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        self._completion_timers.clear()
+        self._idle_timers.clear()
 
     async def _cleanup_old_sessions_loop(self) -> None:
         """Periodically clean up old sessions to prevent memory leak."""

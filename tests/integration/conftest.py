@@ -101,6 +101,10 @@ def live_servers():
     main_port = _find_free_port()
     otlp_port = _find_free_port()
 
+    saved_env = {
+        "AGENTEVALS_LIVE": os.environ.get("AGENTEVALS_LIVE"),
+        "AGENTEVALS_HEADLESS": os.environ.get("AGENTEVALS_HEADLESS"),
+    }
     os.environ["AGENTEVALS_LIVE"] = "1"
     os.environ["AGENTEVALS_HEADLESS"] = "1"
 
@@ -130,29 +134,41 @@ def live_servers():
 
     def _run():
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(
-            asyncio.gather(main_server.serve(), otlp_server.serve())
-        )
+        try:
+            loop.run_until_complete(
+                asyncio.gather(main_server.serve(), otlp_server.serve())
+            )
+        finally:
+            loop.close()
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
 
-    # Wait for servers to accept connections
     import httpx as _httpx
 
     for port in (main_port, otlp_port):
+        reachable = False
         for _ in range(50):
             try:
-                resp = _httpx.get(f"http://127.0.0.1:{port}/", timeout=0.5)
+                _httpx.get(f"http://127.0.0.1:{port}/", timeout=0.5)
+                reachable = True
                 break
             except (_httpx.ConnectError, _httpx.ReadError):
                 time.sleep(0.1)
+        if not reachable:
+            raise RuntimeError(f"Server on port {port} did not become reachable")
 
     yield main_port, otlp_port, mgr
 
     main_server.should_exit = True
     otlp_server.should_exit = True
     thread.join(timeout=5)
+
+    for key, value in saved_env.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
 # ---------------------------------------------------------------------------
