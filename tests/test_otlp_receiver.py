@@ -523,15 +523,26 @@ class TestGetOrCreateOtlpSession:
             assert s1 is s2
         _run(go())
 
-    def test_does_not_return_complete_session(self):
+    def test_new_trace_id_does_not_return_complete_session(self):
+        async def go():
+            mgr = _make_mgr()
+            meta = {"eval_set_id": None, "session_name": "s1", "resource_attrs": {}}
+            s1 = await mgr.get_or_create_otlp_session("trace-abc", meta)
+            s1.is_complete = True
+            s2 = await mgr.get_or_create_otlp_session("trace-new", meta)
+            assert s2 is not s1
+            assert s2.session_id == "s1-2"
+        _run(go())
+
+    def test_same_trace_id_reopens_complete_session(self):
         async def go():
             mgr = _make_mgr()
             meta = {"eval_set_id": None, "session_name": "s1", "resource_attrs": {}}
             s1 = await mgr.get_or_create_otlp_session("trace-abc", meta)
             s1.is_complete = True
             s2 = await mgr.get_or_create_otlp_session("trace-abc", meta)
-            assert s2 is not s1
-            assert s2.session_id == "s1-2"
+            assert s2 is s1
+            assert not s2.is_complete
         _run(go())
 
     def test_unique_session_ids_across_runs(self):

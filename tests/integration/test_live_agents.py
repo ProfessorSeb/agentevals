@@ -187,3 +187,107 @@ class TestStrandsZeroCode:
         assert resp.status_code == 200
         session_ids = [s["sessionId"] for s in resp.json()["data"]]
         assert session_name in session_ids
+
+
+@_skip_no_openai
+class TestAgentRerun:
+    """Verify that re-running an agent with the same session_name creates
+    separate sessions, not merging them into one.
+
+    Each subprocess is a new OS process with new trace_ids. The OTLP
+    receiver must recognize these as distinct runs and assign unique
+    session IDs (session_name, session_name-2, etc.)."""
+
+    def test_strands_rerun_creates_separate_sessions(self, live_servers):
+        """Run the Strands agent twice with the same session_name.
+        Each run must produce its own session."""
+        main_port, otlp_port, mgr = live_servers
+        session_name = "e2e-strands-rerun"
+        strands_env = {
+            "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+        }
+
+        result1 = _run_agent(
+            "examples/zero-code-examples/strands/run.py",
+            otlp_port,
+            session_name,
+            extra_env=strands_env,
+        )
+        assert result1.returncode == 0, f"Run 1 failed:\n{result1.stderr}"
+        wait_for_session_complete_sync(mgr, session_name, timeout=30)
+
+        result2 = _run_agent(
+            "examples/zero-code-examples/strands/run.py",
+            otlp_port,
+            session_name,
+            extra_env=strands_env,
+        )
+        assert result2.returncode == 0, f"Run 2 failed:\n{result2.stderr}"
+        wait_for_session_complete_sync(mgr, f"{session_name}-2", timeout=30)
+
+        s1 = mgr.sessions[session_name]
+        s2 = mgr.sessions[f"{session_name}-2"]
+
+        assert s1.is_complete and s2.is_complete
+        assert len(s1.spans) > 0
+        assert len(s2.spans) > 0
+        assert s1.trace_ids.isdisjoint(s2.trace_ids), (
+            f"Sessions share trace_ids: {s1.trace_ids & s2.trace_ids}"
+        )
+
+    def test_langchain_rerun_creates_separate_sessions(self, live_servers):
+        """Run the LangChain agent twice with the same session_name.
+        Each run must produce its own session."""
+        main_port, otlp_port, mgr = live_servers
+        session_name = "e2e-langchain-rerun"
+
+        result1 = _run_agent(
+            "examples/zero-code-examples/langchain/run.py",
+            otlp_port,
+            session_name,
+        )
+        assert result1.returncode == 0, f"Run 1 failed:\n{result1.stderr}"
+        wait_for_session_complete_sync(mgr, session_name, timeout=30)
+
+        result2 = _run_agent(
+            "examples/zero-code-examples/langchain/run.py",
+            otlp_port,
+            session_name,
+        )
+        assert result2.returncode == 0, f"Run 2 failed:\n{result2.stderr}"
+        wait_for_session_complete_sync(mgr, f"{session_name}-2", timeout=30)
+
+        s1 = mgr.sessions[session_name]
+        s2 = mgr.sessions[f"{session_name}-2"]
+
+        assert s1.is_complete and s2.is_complete
+        assert len(s1.spans) > 0
+        assert len(s2.spans) > 0
+        assert s1.trace_ids.isdisjoint(s2.trace_ids), (
+            f"Sessions share trace_ids: {s1.trace_ids & s2.trace_ids}"
+        )
+
+    def test_rerun_sessions_visible_via_api(self, live_servers):
+        """Both rerun sessions are visible in the API response."""
+        main_port, otlp_port, mgr = live_servers
+        session_name = "e2e-strands-rerun-api"
+        strands_env = {
+            "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+        }
+
+        for run_idx in range(2):
+            result = _run_agent(
+                "examples/zero-code-examples/strands/run.py",
+                otlp_port,
+                session_name,
+                extra_env=strands_env,
+            )
+            assert result.returncode == 0, f"Run {run_idx + 1} failed:\n{result.stderr}"
+            expected_id = session_name if run_idx == 0 else f"{session_name}-2"
+            wait_for_session_complete_sync(mgr, expected_id, timeout=30)
+
+        resp = httpx.get(f"http://127.0.0.1:{main_port}/api/streaming/sessions")
+        assert resp.status_code == 200
+        session_ids = [s["sessionId"] for s in resp.json()["data"]]
+        assert session_name in session_ids
+        assert f"{session_name}-2" in session_ids

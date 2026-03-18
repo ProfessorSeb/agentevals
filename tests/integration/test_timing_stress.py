@@ -159,19 +159,17 @@ class TestGracePeriodInteractions:
 
 
 class TestRapidSequentialSessions:
-    async def test_rapid_sequential_sessions(self, trace_manager, otlp_client):
-        """Complete session A, immediately start session B with same name.
-        Verify no cross-contamination."""
+    async def test_rapid_new_trace_creates_new_session(self, trace_manager, otlp_client):
+        """Complete session A, immediately start session B with same name
+        but new trace_id. Since trace_id is unknown, a new session is created."""
         session_name = "rapid"
 
-        # Session A
         await send_traces(otlp_client, make_trace_request(
             trace_id="rapid-a", session_name=session_name,
             spans=[make_genai_span(trace_id="rapid-a", parent_span_id=None)],
         ))
         await wait_for_session_complete(trace_manager, session_name)
 
-        # Immediately start session B (same name)
         await send_traces(otlp_client, make_trace_request(
             trace_id="rapid-b", session_name=session_name,
             spans=[make_genai_span(trace_id="rapid-b", parent_span_id=None)],
@@ -180,11 +178,41 @@ class TestRapidSequentialSessions:
 
         a = trace_manager.sessions[session_name]
         b = trace_manager.sessions[f"{session_name}-2"]
-
         assert a.trace_ids == {"rapid-a"}
         assert b.trace_ids == {"rapid-b"}
         assert len(a.spans) == 1
         assert len(b.spans) == 1
+
+    async def test_split_batch_reopens_despite_rapid_timing(
+        self, trace_manager, otlp_client
+    ):
+        """Even with rapid timing, a known trace_id reopens the session."""
+        session_name = "rapid-split"
+
+        # Batch 1: root span + child from next trace
+        await send_traces(otlp_client, make_trace_request(
+            trace_id="rs-t1", session_name=session_name,
+            spans=[
+                make_genai_span(trace_id="rs-t1", parent_span_id=None),
+                make_genai_span(trace_id="rs-t2", span_id="t2-child",
+                                parent_span_id="t2-root"),
+            ],
+        ))
+        await wait_for_session_complete(trace_manager, session_name)
+
+        # Batch 2: rest of the split trace
+        await send_traces(otlp_client, make_trace_request(
+            trace_id="rs-t2", session_name=session_name,
+            spans=[
+                make_genai_span(trace_id="rs-t2", span_id="t2-root", parent_span_id=None),
+            ],
+        ))
+        await wait_for_session_complete(trace_manager, session_name)
+
+        assert len(trace_manager.sessions) == 1
+        session = trace_manager.sessions[session_name]
+        assert session.trace_ids == {"rs-t1", "rs-t2"}
+        assert len(session.spans) == 3
 
 
 class TestLargeBatches:
