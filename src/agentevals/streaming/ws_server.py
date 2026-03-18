@@ -233,6 +233,11 @@ class StreamingTraceManager:
                 active.trace_ids.add(trace_id)
                 return active
 
+        existing = self.find_session_by_trace_id(trace_id)
+        if existing and existing.is_complete:
+            self._reopen_session(existing, trace_id, session_name)
+            return existing
+
         session_id = session_name
         if session_id in self.sessions:
             counter = 2
@@ -323,6 +328,29 @@ class StreamingTraceManager:
             self._delayed_reextract(session_id, self.reextraction_delay_seconds)
         )
 
+    def _reopen_session(
+        self, session: TraceSession, trace_id: str, session_name: str
+    ) -> None:
+        """Reopen a completed session when a trace_id already in the session
+        receives more spans after completion (split-batch scenario).
+
+        The OTLP BatchSpanProcessor may flush one turn's spans across the
+        completion boundary: some child spans arrive before the grace period
+        fires, and the root span (plus remaining children) arrives after.
+        Because the trace_id was already registered in the session, we know
+        these late spans belong here rather than to a new agent run.
+        """
+        session.is_complete = False
+        session.completed_at = None
+        session.trace_ids.add(trace_id)
+        self._active_session_for_name[session_name] = session.session_id
+        self.incremental_extractors[session.session_id] = IncrementalInvocationExtractor()
+        self.reset_idle_timer(session.session_id)
+        logger.info(
+            "Reopened session %s for trace %s (%d spans so far)",
+            session.session_id, trace_id, len(session.spans),
+        )
+
     async def _delayed_complete(self, session_id: str, delay: float) -> None:
         await asyncio.sleep(delay)
         await self._complete_otlp_session(session_id)
@@ -376,6 +404,7 @@ class StreamingTraceManager:
             return
 
         session.is_complete = True
+        session.completed_at = datetime.now(UTC)
 
         for name, sid in list(self._active_session_for_name.items()):
             if sid == session_id:

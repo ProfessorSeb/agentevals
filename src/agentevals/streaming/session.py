@@ -20,6 +20,7 @@ class TraceSession:
     logs: list[dict] = field(default_factory=list)
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     is_complete: bool = False
+    completed_at: datetime | None = None
     metadata: dict = field(default_factory=dict)
     source: str = "websocket"
     has_root_span: bool = False
