@@ -7,10 +7,13 @@ import type { ConversationElement, LiveSession, StreamingInvocation } from '../.
 function invocationsToElements(invocations: StreamingInvocation[]): ConversationElement[] {
   return invocations.flatMap((inv, idx) => {
     const elements: ConversationElement[] = [];
+    const base = idx * 1000;
+    let seq = 0;
+
     if (inv.userText) {
       elements.push({
         type: 'user_input',
-        timestamp: idx * 3,
+        timestamp: base + seq++,
         invocationId: inv.invocationId,
         data: { text: inv.userText },
       });
@@ -18,15 +21,24 @@ function invocationsToElements(invocations: StreamingInvocation[]): Conversation
     for (const tc of inv.toolCalls || []) {
       elements.push({
         type: 'tool_call',
-        timestamp: idx * 3 + 1,
+        timestamp: base + seq++,
         invocationId: inv.invocationId,
         data: { toolCall: tc },
       });
+      const tr = inv.toolResponses?.find(r => r.id === tc.id || r.name === tc.name);
+      if (tr) {
+        elements.push({
+          type: 'tool_result',
+          timestamp: base + seq++,
+          invocationId: inv.invocationId,
+          data: { response: tr.response, isError: !!tr.response?.isError },
+        });
+      }
     }
     if (inv.agentText) {
       elements.push({
         type: 'agent_response',
-        timestamp: idx * 3 + 2,
+        timestamp: base + seq++,
         invocationId: inv.invocationId,
         data: { text: inv.agentText },
       });
@@ -224,6 +236,28 @@ export function LiveStreamingView() {
                     timestamp: data.timestamp,
                     invocationId: data.invocationId,
                     data: { toolCall: data.toolCall },
+                  },
+                ],
+              });
+              return newMap;
+            });
+            break;
+
+          case 'tool_result':
+            setActiveSessions(prev => {
+              const session = prev.get(data.sessionId);
+              if (!session) return prev;
+
+              const newMap = new Map(prev);
+              newMap.set(data.sessionId, {
+                ...session,
+                liveElements: [
+                  ...session.liveElements,
+                  {
+                    type: 'tool_result',
+                    timestamp: data.timestamp,
+                    invocationId: data.invocationId,
+                    data: { response: data.response, isError: data.isError },
                   },
                 ],
               });

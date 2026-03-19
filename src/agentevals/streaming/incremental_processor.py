@@ -19,8 +19,10 @@ from ..extraction import (
     extract_agent_response_from_attrs,
     extract_token_usage_from_attrs,
     extract_tool_call_from_attrs,
+    extract_tool_result_from_attrs,
     extract_user_text_from_attrs,
     flatten_otlp_attributes,
+    parse_tool_response_content,
 )
 from ..trace_attrs import (
     ADK_INVOCATION_ID,
@@ -56,6 +58,7 @@ class IncrementalInvocationExtractor:
         self.token_totals = {}
         self.current_invocation_id = None
         self.seen_message_contents = set()  # Track message contents to avoid duplicates
+        self.tool_names_by_id: dict[str, str] = {}  # tool_call_id -> tool_name
 
     def process_span(self, span: dict) -> list[dict]:
         """Process a single OTLP span and return conversation updates to broadcast.
@@ -150,6 +153,8 @@ class IncrementalInvocationExtractor:
                 if invocation_id not in self.seen_tool_calls:
                     self.seen_tool_calls[invocation_id] = set()
 
+                self.tool_names_by_id[call_id] = tool_call["name"]
+
                 if call_id not in self.seen_tool_calls[invocation_id]:
                     updates.append({
                         "type": "tool_call",
@@ -158,6 +163,18 @@ class IncrementalInvocationExtractor:
                         "timestamp": int(span.get("startTimeUnixNano", 0)) / 1e9,
                     })
                     self.seen_tool_calls[invocation_id].add(call_id)
+
+                    tool_result = extract_tool_result_from_attrs(attributes)
+                    if tool_result:
+                        updates.append({
+                            "type": "tool_result",
+                            "invocationId": invocation_id,
+                            "toolCallId": call_id,
+                            "toolName": tool_call["name"],
+                            "response": tool_result["response"],
+                            "isError": tool_result["isError"],
+                            "timestamp": int(span.get("endTimeUnixNano", 0)) / 1e9,
+                        })
 
         return updates
 
@@ -236,10 +253,13 @@ class IncrementalInvocationExtractor:
                             tool_id = tc.get("id", "unknown")
                             tool_key = f"tool:{tool_id}"
 
+                            tc_name = tc.get("function", {}).get("name", "unknown") if "function" in tc else tc.get("name", "unknown")
+                            self.tool_names_by_id[tool_id] = tc_name
+
                             if tool_key not in self.seen_message_contents:
                                 tool_call = {
                                     "id": tool_id,
-                                    "name": tc.get("function", {}).get("name", "unknown") if "function" in tc else tc.get("name", "unknown"),
+                                    "name": tc_name,
                                     "args": {},
                                 }
 
@@ -260,6 +280,28 @@ class IncrementalInvocationExtractor:
                                 if invocation_id not in self.seen_tool_calls:
                                     self.seen_tool_calls[invocation_id] = set()
                                 self.seen_tool_calls[invocation_id].add(tool_id)
+
+        # Extract tool results from gen_ai.tool.message logs
+        elif event_name == "gen_ai.tool.message":
+            if isinstance(body, dict):
+                tool_id = body.get("id", "unknown")
+                tool_name = body.get("name") or self.tool_names_by_id.get(tool_id, "unknown")
+                content = body.get("content")
+                if content is not None:
+                    response = parse_tool_response_content(content)
+                    result_key = f"tool_result:{tool_id}"
+                    if result_key not in self.seen_message_contents:
+                        is_error = bool(response.get("isError", False))
+                        updates.append({
+                            "type": "tool_result",
+                            "invocationId": invocation_id,
+                            "toolCallId": tool_id,
+                            "toolName": tool_name,
+                            "response": response,
+                            "isError": is_error,
+                            "timestamp": _normalize_ts(log_event.get("timestamp", 0)),
+                        })
+                        self.seen_message_contents.add(result_key)
 
         return updates
 

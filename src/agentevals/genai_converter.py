@@ -16,7 +16,7 @@ from google.adk.evaluation.eval_case import IntermediateData, Invocation
 from google.genai import types as genai_types
 
 from .converter import ConversionResult
-from .extraction import GenAIExtractor, is_invocation_span, is_llm_span
+from .extraction import GenAIExtractor, is_invocation_span, is_llm_span, parse_tool_response_content
 from .loader.base import Span, Trace
 from .trace_attrs import (
     OTEL_GENAI_INPUT_MESSAGES,
@@ -441,17 +441,39 @@ def _extract_tool_calls(
 
         result_raw = tool_span.get_tag(OTEL_GENAI_TOOL_CALL_RESULT)
         if result_raw:
-            result_data = parse_json_attr(result_raw, "gen_ai.tool.call.result")
-            if result_data is None:
-                result_data = {}
-
+            result_data = parse_tool_response_content(result_raw)
             logger.debug(f"Tool {tool_name} result: {str(result_data)[:100]}")
-
             tool_responses.append(_ToolResponse(
                 name=tool_name,
-                response=result_data if isinstance(result_data, dict) else {"result": str(result_data)},
+                response=result_data,
                 id=tool_call_id,
             ))
+        else:
+            output_msgs_raw = tool_span.get_tag(OTEL_GENAI_OUTPUT_MESSAGES)
+            if output_msgs_raw:
+                output_msgs = parse_json_attr(output_msgs_raw, "gen_ai.output.messages")
+                if isinstance(output_msgs, list):
+                    for msg in output_msgs:
+                        if not isinstance(msg, dict):
+                            continue
+                        for part in msg.get("parts", []):
+                            if not isinstance(part, dict):
+                                continue
+                            if part.get("type") == "tool_call_response" and "response" in part:
+                                resp = part["response"]
+                                if isinstance(resp, list):
+                                    texts = [t.get("text", "") for t in resp if isinstance(t, dict) and "text" in t]
+                                    result_data = parse_tool_response_content(" ".join(texts))
+                                elif isinstance(resp, dict):
+                                    result_data = resp
+                                else:
+                                    result_data = {"result": str(resp)}
+                                tool_responses.append(_ToolResponse(
+                                    name=tool_name,
+                                    response=result_data,
+                                    id=tool_call_id,
+                                ))
+                                break
 
     if llm_spans:
         for llm_span in llm_spans:

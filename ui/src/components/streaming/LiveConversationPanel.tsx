@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { UserMessage, ToolCallMessage, AgentMessage } from './LiveMessage';
+import { UserMessage, ToolCallMessage, ToolResultMessage, AgentMessage } from './LiveMessage';
 import type { ConversationElement } from '../../lib/types';
 
 export type { ConversationElement };
@@ -97,6 +97,13 @@ export function LiveConversationPanel({ elements, isActive }: LiveConversationPa
                 key={idx}
                 name={element.data.toolCall.name}
                 args={element.data.toolCall.args}
+                timestamp={element.timestamp}
+              />;
+            case 'tool_result':
+              return <ToolResultMessage
+                key={idx}
+                response={element.data.response}
+                isError={element.data.isError}
                 timestamp={element.timestamp}
               />;
             case 'agent_response':

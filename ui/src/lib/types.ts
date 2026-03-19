@@ -305,7 +305,7 @@ export const AVAILABLE_METRICS: MetricMetadata[] = [
 
 // Streaming / Live session types
 export interface ConversationElement {
-  type: 'user_input' | 'tool_call' | 'agent_response';
+  type: 'user_input' | 'tool_call' | 'tool_result' | 'agent_response';
   timestamp: number;
   invocationId: string;
   data: any;
@@ -315,7 +315,8 @@ export interface StreamingInvocation {
   invocationId: string;
   userText: string;
   agentText: string;
-  toolCalls: Array<{ name: string; args: any }>;
+  toolCalls: Array<{ name: string; args: any; id?: string }>;
+  toolResponses?: Array<{ name: string; response: Record<string, any>; id?: string }>;
 }
 
 export interface LiveSession {

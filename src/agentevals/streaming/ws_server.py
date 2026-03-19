@@ -15,7 +15,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .session import TraceSession
 from .incremental_processor import IncrementalInvocationExtractor
 from ..converter import convert_traces
-from ..extraction import extract_token_usage_from_attrs, is_llm_span
+from ..extraction import extract_token_usage_from_attrs, is_llm_span, parse_tool_response_content
 from ..loader.base import Trace
 from ..loader.otlp import OtlpJsonLoader
 from ..trace_attrs import OTEL_GENAI_INPUT_MESSAGES, OTEL_GENAI_REQUEST_MODEL
@@ -619,7 +619,6 @@ class StreamingTraceManager:
                 - modelInfo: Model metadata (model name, tokens, etc.)
         """
         try:
-            import tempfile
             temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False)
 
             has_genai_spans = any(
@@ -688,6 +687,16 @@ class StreamingTraceManager:
                             tool_calls.append({
                                 "name": tool_use.name,
                                 "args": tool_use.args if hasattr(tool_use, 'args') else {},
+                                "id": getattr(tool_use, 'id', None),
+                            })
+
+                    tool_responses = []
+                    if inv.intermediate_data and inv.intermediate_data.tool_responses:
+                        for tr in inv.intermediate_data.tool_responses:
+                            tool_responses.append({
+                                "name": tr.name,
+                                "response": tr.response if hasattr(tr, 'response') else {},
+                                "id": getattr(tr, 'id', None),
                             })
 
                     model_info = {}
@@ -699,10 +708,14 @@ class StreamingTraceManager:
                         "userText": user_text,
                         "agentText": agent_text,
                         "toolCalls": tool_calls,
+                        "toolResponses": tool_responses,
                         "modelInfo": model_info,
                     })
 
             logger.debug("Extracted %d invocations from %d traces", len(invocations_data), len(conversion_results))
+
+            self._augment_tool_responses_from_logs(invocations_data, session)
+
             return invocations_data
 
         except Exception as exc:
@@ -740,3 +753,57 @@ class StreamingTraceManager:
             model_info["outputTokens"] = total_output_tokens
 
         return model_info
+
+    @staticmethod
+    def _augment_tool_responses_from_logs(
+        invocations_data: list[dict], session: TraceSession
+    ) -> None:
+        """Fill in missing tool responses from session logs (e.g. LangChain gen_ai.tool.message)."""
+        if not session.logs:
+            return
+
+        needs_responses = any(
+            inv.get("toolCalls") and not inv.get("toolResponses")
+            for inv in invocations_data
+        )
+        if not needs_responses:
+            return
+
+        tool_names: dict[str, str] = {}
+        for inv in invocations_data:
+            for tc in inv.get("toolCalls", []):
+                tc_id = tc.get("id")
+                if tc_id:
+                    tool_names[tc_id] = tc["name"]
+
+        tool_results_by_span: dict[str, list[dict]] = {}
+        for log_event in session.logs:
+            if log_event.get("event_name") != "gen_ai.tool.message":
+                continue
+            body = log_event.get("body", {})
+            if not isinstance(body, dict):
+                continue
+            span_id = log_event.get("span_id", "")
+            tool_id = body.get("id", "")
+            content = body.get("content")
+            if content is None:
+                continue
+
+            response = parse_tool_response_content(content)
+            tool_results_by_span.setdefault(span_id, []).append({
+                "name": body.get("name") or tool_names.get(tool_id, "unknown"),
+                "response": response,
+                "id": tool_id,
+            })
+
+        if not tool_results_by_span:
+            return
+
+        for inv in invocations_data:
+            if inv.get("toolResponses"):
+                continue
+            inv_id = inv.get("invocationId", "")
+            bare_span_id = inv_id.removeprefix("genai-")
+            responses = tool_results_by_span.get(bare_span_id, [])
+            if responses:
+                inv["toolResponses"] = responses

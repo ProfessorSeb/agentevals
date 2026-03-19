@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface UserMessageProps {
   text: string;
   timestamp: number;
@@ -42,7 +44,7 @@ export function ToolCallMessage({ name, args }: ToolCallMessageProps) {
 
   return (
     <div style={{
-      marginBottom: '12px',
+      marginBottom: '2px',
       paddingLeft: '12px',
     }}>
       <div style={{
@@ -52,6 +54,49 @@ export function ToolCallMessage({ name, args }: ToolCallMessageProps) {
         fontWeight: 500,
       }}>
         → {name}({argsStr})
+      </div>
+    </div>
+  );
+}
+
+const TRUNCATE_LENGTH = 120;
+
+interface ToolResultMessageProps {
+  response: Record<string, any>;
+  isError?: boolean;
+  timestamp: number;
+}
+
+export function ToolResultMessage({ response, isError }: ToolResultMessageProps) {
+  const [expanded, setExpanded] = useState(false);
+  const jsonStr = JSON.stringify(response);
+  const needsTruncation = jsonStr.length > TRUNCATE_LENGTH;
+  const displayStr = !expanded && needsTruncation
+    ? jsonStr.slice(0, TRUNCATE_LENGTH) + '\u2026'
+    : JSON.stringify(response, null, expanded ? 2 : undefined);
+
+  const color = isError ? '#ef4444' : '#10b981';
+
+  return (
+    <div style={{
+      marginBottom: '12px',
+      paddingLeft: '12px',
+    }}>
+      <div
+        style={{
+          fontSize: '11px',
+          color,
+          fontFamily: 'monospace',
+          fontWeight: 400,
+          cursor: needsTruncation ? 'pointer' : 'default',
+          whiteSpace: expanded ? 'pre-wrap' : 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+        onClick={needsTruncation ? () => setExpanded(e => !e) : undefined}
+        title={needsTruncation ? (expanded ? 'Click to collapse' : 'Click to expand') : undefined}
+      >
+        ← {displayStr}
       </div>
     </div>
   );

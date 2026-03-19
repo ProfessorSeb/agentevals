@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AnnotationQueueItem, Annotation, FirstPassLabel } from '../../lib/types';
+import { ToolCallMessage, ToolResultMessage } from '../streaming/LiveMessage';
 
 interface AnnotationDetailPanelProps {
   item: AnnotationQueueItem;
@@ -143,18 +144,15 @@ export function AnnotationDetailPanel({ item, onSave, onClose }: AnnotationDetai
                 {inv.toolCalls.length > 0 && (
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Tool Calls</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {inv.toolCalls.map((tc, i) => (
-                        <div key={i} style={{
-                          fontSize: '12px', color: '#A855F7', fontFamily: 'monospace',
-                          background: 'rgba(168, 85, 247, 0.08)', padding: '6px 10px', borderRadius: '6px', fontWeight: 500,
-                        }}>
-                          {tc.name}({Object.keys(tc.args || {}).length > 0
-                            ? Object.keys(tc.args).map(k => `${k}=${JSON.stringify(tc.args[k])}`).join(', ')
-                            : ''})
+                    {inv.toolCalls.map((tc, i) => {
+                      const tr = inv.toolResponses?.find(r => r.id === tc.id || r.name === tc.name);
+                      return (
+                        <div key={i}>
+                          <ToolCallMessage name={tc.name} args={tc.args || {}} timestamp={0} />
+                          {tr && <ToolResultMessage response={tr.response} isError={!!tr.response?.isError} timestamp={0} />}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -173,24 +171,28 @@ export function AnnotationDetailPanel({ item, onSave, onClose }: AnnotationDetai
           <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {elements.map((el, idx) => (
               <div key={idx}>
-                <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                  {el.type === 'user_input' ? 'User' : el.type === 'tool_call' ? 'Tool Call' : 'Agent'}
-                </div>
-                <div style={{
-                  fontSize: '13px',
-                  color: el.type === 'tool_call' ? '#A855F7' : 'var(--text-primary)',
-                  lineHeight: '1.6',
-                  padding: '8px 12px',
-                  background: el.type === 'tool_call' ? 'rgba(168, 85, 247, 0.08)' : 'var(--bg-surface)',
-                  borderRadius: '6px',
-                  borderLeft: `3px solid ${el.type === 'user_input' ? '#7C3AED' : el.type === 'tool_call' ? '#A855F7' : '#10b981'}`,
-                  fontFamily: el.type === 'tool_call' ? 'monospace' : 'inherit',
-                  fontWeight: el.type === 'tool_call' ? 500 : 400,
-                }}>
-                  {el.type === 'tool_call'
-                    ? `${el.data?.toolCall?.name || 'unknown'}(...)`
-                    : el.data?.text || '(no text)'}
-                </div>
+                {el.type === 'tool_call' ? (
+                  <ToolCallMessage name={el.data?.toolCall?.name || 'unknown'} args={el.data?.toolCall?.args || {}} timestamp={el.timestamp} />
+                ) : el.type === 'tool_result' ? (
+                  <ToolResultMessage response={el.data?.response} isError={el.data?.isError} timestamp={el.timestamp} />
+                ) : (
+                  <>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      {el.type === 'user_input' ? 'User' : 'Agent'}
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      color: 'var(--text-primary)',
+                      lineHeight: '1.6',
+                      padding: '8px 12px',
+                      background: 'var(--bg-surface)',
+                      borderRadius: '6px',
+                      borderLeft: `3px solid ${el.type === 'user_input' ? '#7C3AED' : '#10b981'}`,
+                    }}>
+                      {el.data?.text || '(no text)'}
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

@@ -21,12 +21,14 @@ from .trace_attrs import (
     ADK_LLM_RESPONSE,
     ADK_SCOPE_VALUE,
     ADK_TOOL_CALL_ARGS,
+    ADK_TOOL_RESPONSE,
     OTEL_GENAI_INPUT_MESSAGES,
     OTEL_GENAI_OP,
     OTEL_GENAI_OUTPUT_MESSAGES,
     OTEL_GENAI_REQUEST_MODEL,
     OTEL_GENAI_TOOL_CALL_ARGUMENTS,
     OTEL_GENAI_TOOL_CALL_ID,
+    OTEL_GENAI_TOOL_CALL_RESULT,
     OTEL_GENAI_TOOL_NAME,
     OTEL_GENAI_USAGE_INPUT_TOKENS,
     OTEL_GENAI_USAGE_OUTPUT_TOKENS,
@@ -174,6 +176,70 @@ def extract_tool_call_from_attrs(
                 tool_call_id = fallback_id
 
     return {"id": tool_call_id, "name": tool_name, "args": args}
+
+
+def parse_tool_response_content(content: Any) -> dict:
+    """Parse raw tool response content into a response dict.
+
+    Handles str (tries JSON parse), dict (pass-through), and other types (stringified).
+    On JSON parse failure, wraps raw content as {"result": content}.
+    """
+    if isinstance(content, str):
+        try:
+            parsed = json.loads(content)
+            return parsed if isinstance(parsed, dict) else {"result": str(parsed)}
+        except (json.JSONDecodeError, TypeError):
+            return {"result": content}
+    elif isinstance(content, dict):
+        return content
+    return {"result": str(content)}
+
+
+def extract_tool_result_from_attrs(attrs: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract tool result from span attributes, ADK-first.
+
+    Checks (in order):
+    1. ADK tool response attribute
+    2. GenAI semconv tool call result attribute
+    3. gen_ai.output.messages for tool_call_response parts (Strands format)
+
+    Returns {"response": <parsed dict>, "isError": bool} or None if no result present.
+    """
+    raw = attrs.get(ADK_TOOL_RESPONSE)
+    if not raw:
+        raw = attrs.get(OTEL_GENAI_TOOL_CALL_RESULT)
+
+    if raw:
+        parsed = parse_tool_response_content(raw)
+        if parsed:
+            is_error = bool(parsed.get("isError", False))
+            return {"response": parsed, "isError": is_error}
+
+    output_msgs_raw = attrs.get(OTEL_GENAI_OUTPUT_MESSAGES)
+    if output_msgs_raw:
+        messages = parse_json_attr(output_msgs_raw, "gen_ai.output.messages")
+        if isinstance(messages, list):
+            for msg in messages:
+                if not isinstance(msg, dict):
+                    continue
+                for part in msg.get("parts", []):
+                    if not isinstance(part, dict):
+                        continue
+                    if part.get("type") == "tool_call_response" and "response" in part:
+                        resp = part["response"]
+                        if isinstance(resp, list):
+                            texts = [
+                                t.get("text", "") for t in resp
+                                if isinstance(t, dict) and "text" in t
+                            ]
+                            parsed = parse_tool_response_content(" ".join(texts))
+                        elif isinstance(resp, dict):
+                            parsed = resp
+                        else:
+                            continue
+                        return {"response": parsed, "isError": bool(parsed.get("isError", False))}
+
+    return None
 
 
 # ---------------------------------------------------------------------------
