@@ -33,10 +33,10 @@ import asyncio
 import os
 import threading
 
+from agent import create_dice_agent
 from dotenv import load_dotenv
 from strands.telemetry import StrandsTelemetry
 
-from agent import create_dice_agent
 from agentevals.streaming.processor import AgentEvalsStreamingProcessor
 
 load_dotenv(override=True)
@@ -98,7 +98,7 @@ def main():
 
     print("✓ Connected to agentevals dev server")
     print(f"  Session: {session_id}")
-    print(f"  View live: http://localhost:5173")
+    print("  View live: http://localhost:5173")
     print()
 
     print("🎲 Strands Dice Agent - Live Dev Mode")

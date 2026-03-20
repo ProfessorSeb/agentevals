@@ -17,9 +17,10 @@ Usage:
 
 import logging
 
-from agentevals import AgentEvals
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+
+from agentevals import AgentEvals
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv(override=True)

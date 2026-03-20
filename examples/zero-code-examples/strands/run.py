@@ -19,9 +19,9 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from strands.telemetry import StrandsTelemetry
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "strands_agent"))

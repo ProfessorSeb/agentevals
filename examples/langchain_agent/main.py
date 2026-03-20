@@ -32,6 +32,7 @@ import asyncio
 import os
 import threading
 
+from agent import create_dice_agent
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, ToolMessage
 from opentelemetry import trace
@@ -40,7 +41,6 @@ from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk.trace import TracerProvider
 
-from agent import create_dice_agent
 from agentevals.streaming.processor import (
     AgentEvalsLogStreamingProcessor,
     AgentEvalsStreamingProcessor,
@@ -122,7 +122,7 @@ def main():
 
     print("✓ Connected to agentevals dev server")
     print(f"  Session: {session_id}")
-    print(f"  View live: http://localhost:5173")
+    print("  View live: http://localhost:5173")
     print()
 
     print("🎲 LangChain Dice Agent - Live Dev Mode")
@@ -167,7 +167,7 @@ def main():
                         )
                     )
         else:
-            print(f"     Agent: [Max iterations reached]")
+            print("     Agent: [Max iterations reached]")
 
     print()
     print("✓ Agent execution complete")

@@ -1,6 +1,7 @@
 """LangChain agent with dice rolling and prime checking tools."""
 
 import random
+
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 

@@ -53,8 +53,9 @@ async def main():
     trace.set_tracer_provider(provider)
 
     try:
-        from agentevals.streaming.processor import AgentEvalsStreamingProcessor
         from datetime import datetime
+
+        from agentevals.streaming.processor import AgentEvalsStreamingProcessor
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:21]
         session_id = f"dice-agent-{dice_agent.model}-{timestamp}"
@@ -71,10 +72,10 @@ async def main():
 
         provider.add_span_processor(processor)
 
-        print(f"✓ Connected to agentevals dev server")
+        print("✓ Connected to agentevals dev server")
         print(f"  Session: {session_id}")
         print(f"  Model: {dice_agent.model}")
-        print(f"  View live: http://localhost:5173")
+        print("  View live: http://localhost:5173")
         print()
 
         app_name = "dice_agent_app"

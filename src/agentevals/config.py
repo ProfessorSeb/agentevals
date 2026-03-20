@@ -2,22 +2,79 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from pathlib import Path
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+class BuiltinMetricDef(BaseModel):
+    """A built-in ADK metric, optionally with threshold/judge overrides."""
+
+    name: str
+    type: Literal["builtin"] = "builtin"
+    threshold: float | None = None
+    judge_model: str | None = None
+
+
+class BaseEvaluatorDef(BaseModel):
+    """Shared fields for all executable evaluator definitions."""
+
+    name: str
+    threshold: float = 0.5
+    timeout: int = Field(default=30, description="Subprocess timeout in seconds.")
+    config: dict[str, Any] = Field(default_factory=dict)
+    executor: str = Field(default="local", description="Execution environment: 'local' or 'docker' (future).")
+
+
+class CodeEvaluatorDef(BaseEvaluatorDef):
+    """An evaluator implemented as an external code file (Python, JavaScript, etc.)."""
+
+    type: Literal["code"] = "code"
+    path: str = Field(description="Path to the evaluator file (.py, .js, .ts, etc.).")
+
+    @field_validator("path")
+    @classmethod
+    def _validate_extension(cls, v: str) -> str:
+        from .custom_evaluators import supported_extensions
+
+        suffix = Path(v).suffix.lower()
+        allowed = supported_extensions()
+        if suffix not in allowed:
+            raise ValueError(f"Unsupported evaluator file extension '{suffix}'. Supported: {sorted(allowed)}")
+        return v
+
+
+class RemoteEvaluatorDef(BaseEvaluatorDef):
+    """An evaluator fetched from a remote source (GitHub, registry, etc.)."""
+
+    type: Literal["remote"] = "remote"
+    source: str = Field(default="github", description="Evaluator source (e.g. 'github').")
+    ref: str = Field(description="Source-specific reference (e.g. path within the repo).")
+
+
+CustomEvaluatorDef = Annotated[
+    BuiltinMetricDef | CodeEvaluatorDef | RemoteEvaluatorDef,
+    Field(discriminator="type"),
+]
 
 
 class EvalRunConfig(BaseModel):
     trace_files: list[str] = Field(description="Paths to trace files (Jaeger JSON or OTLP JSON).")
 
-    eval_set_file: Optional[str] = Field(
+    eval_set_file: str | None = Field(
         default=None,
         description="Path to a golden eval set JSON file (ADK EvalSet format).",
     )
 
     metrics: list[str] = Field(
         default_factory=lambda: ["tool_trajectory_avg_score"],
-        description="List of metric names to evaluate.",
+        description="List of built-in metric names to evaluate.",
+    )
+
+    custom_evaluators: list[CustomEvaluatorDef] = Field(
+        default_factory=list,
+        description="Custom evaluator definitions.",
     )
 
     trace_format: str = Field(
@@ -25,12 +82,12 @@ class EvalRunConfig(BaseModel):
         description="Format of the trace files (jaeger-json or otlp-json).",
     )
 
-    judge_model: Optional[str] = Field(
+    judge_model: str | None = Field(
         default=None,
         description="LLM model for judge-based metrics.",
     )
 
-    threshold: Optional[float] = Field(
+    threshold: float | None = Field(
         default=None,
         description="Score threshold for pass/fail.",
     )

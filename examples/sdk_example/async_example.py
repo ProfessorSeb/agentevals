@@ -20,13 +20,13 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
-from dotenv import load_dotenv
-from google.adk.runners import InMemoryRunner
-from google.genai import types
-
 # Import the dice_agent from the sibling example directory.
 # In a real project this would be a normal package import.
 import importlib.util
+
+from dotenv import load_dotenv
+from google.adk.runners import InMemoryRunner
+from google.genai import types
 
 _agent_path = Path(__file__).resolve().parent.parent / "dice_agent" / "agent.py"
 _spec = importlib.util.spec_from_file_location("dice_agent_module", _agent_path)

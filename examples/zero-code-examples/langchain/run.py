@@ -107,7 +107,7 @@ def main():
                         )
                     )
         else:
-            print(f"     Agent: [Max iterations reached]")
+            print("     Agent: [Max iterations reached]")
 
     print()
     tracer_provider.force_flush()

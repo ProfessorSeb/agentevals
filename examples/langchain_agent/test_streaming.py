@@ -15,6 +15,7 @@ Usage:
 import asyncio
 import os
 from datetime import datetime
+
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 
@@ -46,7 +47,7 @@ async def test_connection():
 
         provider.add_span_processor(processor)
 
-        print(f"✓ Connected successfully!")
+        print("✓ Connected successfully!")
         print(f"  Session ID: {session_id}")
         print()
 
@@ -66,7 +67,7 @@ async def test_connection():
         print()
 
     except Exception as e:
-        print(f"❌ Connection test FAILED")
+        print("❌ Connection test FAILED")
         print(f"   Error: {e}")
         print()
         print("Make sure agentevals dev server is running:")
