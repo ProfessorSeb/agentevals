@@ -4,7 +4,7 @@ These tests launch agent subprocesses that emit real OTLP traces,
 exercising the full pipeline including BatchSpanProcessor/BatchLogRecordProcessor
 flush timing, session grouping, and invocation extraction.
 
-Requires API keys (OPENAI_API_KEY for LangChain/Strands).
+Requires API keys (OPENAI_API_KEY for LangChain/Strands, GOOGLE_API_KEY for ADK).
 Skipped when keys are not available.
 
 Tests are synchronous because:
@@ -31,6 +31,11 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 _skip_no_openai = pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY"),
     reason="OPENAI_API_KEY not set",
+)
+
+_skip_no_google = pytest.mark.skipif(
+    not os.environ.get("GOOGLE_API_KEY"),
+    reason="GOOGLE_API_KEY not set",
 )
 
 
@@ -175,6 +180,63 @@ class TestStrandsZeroCode:
             extra_env={
                 "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
             },
+        )
+        assert result.returncode == 0
+
+        wait_for_session_complete_sync(mgr, session_name, timeout=30)
+
+        resp = httpx.get(f"http://127.0.0.1:{main_port}/api/streaming/sessions")
+        assert resp.status_code == 200
+        session_ids = [s["sessionId"] for s in resp.json()["data"]]
+        assert session_name in session_ids
+
+
+@_skip_no_google
+class TestAdkZeroCode:
+    """Run the ADK zero-code OTLP example and verify session grouping."""
+
+    def test_session_created_spans_only(self, live_servers):
+        main_port, otlp_port, mgr = live_servers
+        session_name = "e2e-adk"
+
+        result = _run_agent(
+            "examples/zero-code-examples/adk/run.py",
+            otlp_port,
+            session_name,
+        )
+        assert result.returncode == 0, f"Agent failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+        wait_for_session_complete_sync(mgr, session_name, timeout=30)
+        session = mgr.sessions[session_name]
+
+        assert session.is_complete
+        assert session.source == "otlp"
+        assert len(session.spans) > 0, "Expected spans from ADK agent"
+
+    def test_invocations_extracted(self, live_servers):
+        main_port, otlp_port, mgr = live_servers
+        session_name = "e2e-adk-inv"
+
+        result = _run_agent(
+            "examples/zero-code-examples/adk/run.py",
+            otlp_port,
+            session_name,
+        )
+        assert result.returncode == 0, f"Agent failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+        wait_for_session_complete_sync(mgr, session_name, timeout=30)
+        session = mgr.sessions[session_name]
+
+        assert len(session.invocations) > 0, "Expected extracted invocations"
+
+    def test_session_visible_via_api(self, live_servers):
+        main_port, otlp_port, mgr = live_servers
+        session_name = "e2e-adk-api"
+
+        result = _run_agent(
+            "examples/zero-code-examples/adk/run.py",
+            otlp_port,
+            session_name,
         )
         assert result.returncode == 0
 
