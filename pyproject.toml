@@ -43,6 +43,9 @@ packages = ["src/agentevals"]
 [tool.uv]
 no-build-isolation-package = ["rouge_score"]
 
+[tool.uv.extra-build-dependencies]
+rouge-score = ["setuptools"]
+
 [tool.uv.workspace]
 members = ["packages/evaluator-sdk-py"]
 

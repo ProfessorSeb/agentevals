@@ -20,7 +20,10 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: |
+          uv venv
+          uv pip install setuptools
+          uv sync --dev
 
       - name: Ruff check
         run: uv run ruff check .
@@ -44,7 +47,10 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --dev --python ${{ matrix.python-version }}
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          uv pip install setuptools
+          uv sync --dev --python ${{ matrix.python-version }}
 
       - name: Run tests
         run: uv run pytest -m "not integration and not e2e" --tb=short -q
