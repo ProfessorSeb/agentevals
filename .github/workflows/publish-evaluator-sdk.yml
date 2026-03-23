@@ -23,8 +23,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
+      # Repo root cwd: uv build puts artifacts in ./dist; uv publish looks for dist/* relative to cwd.
       - name: 'Release Python Packages'
-        working-directory: packages/evaluator-sdk-py
         env:
           TAG_OR_VERSION: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
@@ -37,8 +37,8 @@ jobs:
             echo "Expected PEP 440 version (e.g. 0.1.0) or tag evaluator-sdk-v0.1.0; got: $REF"
             exit 1
           fi
-          uv sync --all-extras
+          uv sync --package agentevals-evaluator-sdk --all-extras
           uv version "$VERSION" --package agentevals-evaluator-sdk
 
           uv build --package agentevals-evaluator-sdk
-          uv publish --token ${{ secrets.PYPI_TOKEN }}
+          uv publish dist/* --token ${{ secrets.PYPI_TOKEN }}
