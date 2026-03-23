@@ -31,17 +31,55 @@ AgentEvals scores performance and inference quality from OpenTelemetry traces �
 
 ---
 
-Works with any OTel-instrumented framework (LangChain, Strands, Google ADK, and others). Supports Jaeger JSON and OTLP trace formats, built-in and custom evaluators, and LLM-based judges.
+## What is AgentEvals?
+
+AgentEvals is a framework-agnostic evaluation solution that scores AI agent behavior directly from [OpenTelemetry](https://opentelemetry.io/) traces. Record your agent's actions once, then evaluate as many times as you want — no re-runs, no guesswork.
+
+It works with any OTel-instrumented framework (LangChain, Strands, Google ADK, and others), supports Jaeger JSON and OTLP trace formats, and ships with built-in evaluators, custom evaluator support, and LLM-based judges.
 
 - **CLI** for scripting and CI pipelines
 - **Web UI** for visual inspection and local developer experience
 - **MCP server** so MCP clients can run evaluations from a conversation
+
+## Why AgentEvals?
+
+Most evaluation tools require you to **re-execute your agent** for every test — burning tokens, time, and money on duplicate LLM calls. AgentEvals takes a different approach:
+
+- **No re-execution** — score agents from existing traces without replaying expensive LLM calls
+- **Framework-agnostic** — works with any agent framework that emits OpenTelemetry spans
+- **Golden eval sets** — compare actual behavior against defined expected behaviors for deterministic pass/fail gating
+- **Custom evaluators** — write scoring logic in Python, JavaScript, or any language
+- **CI/CD ready** — gate deployments on quality thresholds directly in your pipeline
+- **Local-first** — no cloud dependency required; everything runs on your machine
+
+## How It Works
+
+AgentEvals follows three simple steps:
+
+1. **Collect traces** — Instrument your agent with OpenTelemetry (or export Jaeger JSON). Point the OTLP exporter at the AgentEvals receiver, or load trace files directly.
+2. **Define eval sets** — Create golden evaluation sets that describe expected agent behavior: which tools should be called, in what order, and what the output should look like.
+3. **Run evaluations** — Use the CLI, Web UI, or MCP server to score traces against your eval sets. Get per-metric scores, pass/fail results, and detailed span-level breakdowns.
+
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
+│  Your Agent  │────▶│  OTel Traces │────▶│   AgentEvals     │
+│  (any framework)   │  (OTLP/Jaeger)     │  CLI · UI · MCP  │
+└─────────────┘     └──────────────┘     └──────────────────┘
+                                                  │
+                                          ┌───────┴────────┐
+                                          │  Eval Sets      │
+                                          │  (golden refs)  │
+                                          └────────────────┘
+```
 
 > [!IMPORTANT]
 > This project is under active development. Expect breaking changes.
 
 ## Contents
 
+- [What is AgentEvals?](#what-is-agentevals)
+- [Why AgentEvals?](#why-agentevals)
+- [How It Works](#how-it-works)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Integration](#integration)
